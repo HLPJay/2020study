@@ -1,0 +1,36 @@
+应用：
+	传输有中文的可以用base64 ==>仅仅传输没有中文
+	摘要：md4 md5 crc
+	https中使用了非对称加密
+作业：
+	reactor 基础上实现http
+		用http的基础上实现openssl 实现https
+
+	测试https服务器跑起来 
+	curl -k https://localhost ==》https地址
+
+
+	1：json的序列化和反序列化原理
+	2：rapidjson的速度
+	3：protobuf编码原理  字符串是否\0
+  
+  reactor
+proactor是什么？
+libevent/libev/libuv -->在epoll的基础上，加了一层socket的管理
+reactor反应堆模型，管理服务器上的一堆fd。（网络接入层的处理）
+
+在上次的基础上，封装一个http的服务器；
+作业：用http请求，实现一个客户端http post请求
+
+http服务器和reactor模型
+
+reactor的实现
+基于reactor的http的实现
+
+				sbuffer
+			<------------
+reactor.c     -------->http.c
+				rbuffer
+
+send_cb
+recv_cb
