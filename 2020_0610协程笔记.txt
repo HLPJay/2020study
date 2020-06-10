@@ -1,0 +1,97 @@
+协程是什么？
+	协程是轻量级的运行单位
+协程用在哪里？
+	客户端和服务器端都能用~
+	则 一请求一回复  ==》涉及同步（请求和接收在同一个流程），异步
+协程解决什么问题？
+	
+客户端的同步和异步：
+	服务器请求mysql/redis/web/dns-->请求一个回复一个 同步操作 --》参考代码 sync_dns_client.c
+	请求与响应不在同一个流程      异步操作
+		==》async_dns_client.c
+服务器的同步和异步：
+	./mul_port_client_epoll.c 服务器ip port ==>3个客户端
+	./server_mulport_epoll.c
+	同步  1000个连接 大约6000ms 直接对io进行读写
+	异步  1000个        800ms   （线程池堆io进行读写操作）
+  
+  epoll监听，epoll_wait()与recv/send在同一个流程里叫同步操作
+
+异步io：linux aio子系统，io_setup
+	io有数据，从内核里通过回调函数到用户态
+异步操作：对io进行异步操作
+
+问题：
+	为什么linux下有aio，为什么服务器网络io的时候不用异步io
+
+
+同步与异步，和协程有什么关系？
+伪代码分析同步异步差异~
+异步涉及多个线程访问同一个fd，需要加锁 这里需要协程
+同步：代码流程清晰
+异步：性能好
+协程：异步的性能，同步的编程方式。
+
+协程：
+	客户端实现编码：
+	服务器端实现编码：
+
+	如何把同步改为异步：
+		king四元组： 阻塞fd，send前检查是否可写
+			1：commit 
+				1：创建socket
+				2：encode procotol 协议
+				3：send()
+				4：epoll_ctl() 交给epoll
+			2：callback ==》创建的另外一个线程
+				1：epoll_wait()
+
+			3：create_context
+			4：destory_context
+int commit()
+{
+	send();
+
+	recv();
+}
+
+改成同步：
+	1：yeild  让出cpu    (yeild 到epoll_wait中)
+	2：resume 重新恢复运行（epoll检测到数据触发）
+			（从epoll_wait中拿出）
+
+resume和yeild如何实现？
+	1:setjmp/longjmp
+	2:ucontext
+	3:自己实现切换，汇编实现
+
+libco 也是汇编实现的
+自己实现切换，汇编实现：
+	x86 15个寄存器 ==》决定了cpu如何运行
+	寄存器组就是上下文
+
+switch(new_ctx, cur_ctx){
+	save(thread1)
+	load(thread2)
+}
+
+基础原语操作：
+	yeild --->调用switch
+	resume --->调用switch 实现切换
+
+原语操作： 最小的操作单位 基本操作
+调度器决定调度哪个单位：
+
+fd和ctx如何关联？ ==》结构体的方式
+
+结构体怎么定义？
+struct{
+	int fd;
+	context ctx;
+
+	func()//每个线程的回调
+	param ;参数
+	status;运行的状态 ready running defer wait
+}
+
+运行状态  用什么结构来存储？
