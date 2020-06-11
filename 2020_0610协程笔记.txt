@@ -95,3 +95,82 @@ struct{
 }
 
 运行状态  用什么结构来存储？
+
+/****************************************
+1：异步的实现    king式四元组
+2：yeild 和 resumen 
+通过原语实现：
+	1：setjmp/longjmp
+	2：ucontext
+	3：汇编自己实现
+3：协程的定义，调度器的定义：
+
+***************************************/
+//队列节点 和业务分离
+//也就是 *prev *next不要放在业务结构体里
+	struct coroutine{
+		int fd; //一个协程对应一个fd 同步流程
+		context ctx; //CPU切换的
+		
+		void* func(void *); //每个协程都有一个入口函数
+		void* param; //函数参数
+
+		//调度器的栈空间 调度会破坏栈空间
+//协程栈
+	// --》压栈 esp/rsp
+	//切换的时候  把esp/rsp指向栈，切换就到栈底了
+		//这个栈空间决定了协程能分配的个数  可以设置动态的扩大
+		void *stack;//指向栈指针 rsp 使每个协程独立空间
+		size_t stack_size;
+
+		unsigned int status; //当前状态ready  running defer wait
+		
+		//ready可用红黑树或者队列来存
+		queue_node(coroutine) ready_node;
+		//做存储用并且有序，用红黑树
+		//红黑树两大用途：1：有序（中序遍历是顺序的） 2：key-value映射关系（map）
+		rbtree_node(coroutine) defer_node;//延迟节点 key是时间戳， 节点是协程		
+//节点前面的 全部就绪 
+//key如果重复 +1 +2 （因为时间戳很小了，影响很小）
+// 红黑树可以重复  但是 影响查找结果
+		rbtree_node(coroutine) wait_node;//条件等待超时
+	}
+//维护协程的运行==》维护三个结构体
+	//ready就绪队列
+	//defer延迟
+	//wait 
+	struct schedule{
+		struct coroutine *current; //当前运行的协程
+			//yeild(current->ctx,)
+		queue_head(coroutine) ready_queue;//就绪的队列
+		//协程coroutine里做yeild    epoll_wait里做resume 一个线程
+
+	}
+
+//x86汇编指令   定义寄存器
+	struct context{
+		void *eax; // 
+	}
+
+	// 协程调度器的实现 
+	// 协程api
+	//每次 send accept recv 没有准备就绪就yeild出去
+
+	send前加入，是担心fd会出现send不可写的状况
+	否则：
+	send()
+	spoll_ctl(add,fd,out)
+	yeild()
+	recv()
+
+	多核模式？
+	粘合：与CPU绑定
+	1：线程 多线程  需要共用一个调度器，需要加锁   在调度器运行切换时加锁就好
+		红黑树加锁，线程安全如何做到？
+
+	2：多进程 ---》fork() --->cpu()粘合  ---》每个进程做协程（进程间协程不共用）
+
+
+libco    ntyco 都是协程库
+
+协程的性能和 epoll的性能对比
