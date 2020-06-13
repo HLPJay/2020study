@@ -1,0 +1,88 @@
+部署到公网的方案：
+	1：使用公网云（阿里云，腾讯云，华为云）
+   	   租带宽（联通电信移动），托管机器
+   	   机房：停电，线路问题等
+   	2：买个腾讯云，建立个人博客。
+   	3： 1：域名 ---》ip的别名，需要申请。 万网，whois。。。（购买域名，认证域名）
+   	    2：买服务器（云服务厂商或者直接买设备，路由器/防火墙）
+   	    	提供服务：公网ip,
+   	    3：备案，DNS服务器===》域名和IP地址
+   	    	在云上直接加到dns服务里
+   	    4：部署我们的服务
+   	有一个域名：
+     1:去DNS服务器 获取到一个域名和ip的对比 （子dns的服务）
+   	   2：去这个ip上解析ip
+   	   3：真正解析的ip是我们的服务部署ip（业务服务器）
+
+   	电脑上配置里的自动获取DNS是路由器分配的？？？
+   	搭建内网DNS（bind）？--》了解域名，加快网络访问，自定义规则，可以搭建多台服务
+   	通过zookeeper管理负载均衡，把多个服务注册到zookerper，
+   	zuul服务发现模块，采用dns的方式
+   	云服务器上开放端口
+    nslookup 和dig命令  
+	Name:	www.a.shifen.com
+	Address: 14.215.177.39  ==》其实也是一个dns  	
+作业：
+	文件传输的作业 ：
+		1：支持多个客户端同时上传文件到服务器。
+		2：越快越好，上传的速度！
+		2.1：可以采用多进程或者多线程来进行传输
+		2.2：分块的传输
+		2.3：IO性能的提升 （从磁盘读==》顺序iO 一个字节 1k） ==》内存页面4k，读一般4K的整数倍
+		nmap可以把磁盘的内存映射到内核
+			TCP拥塞控制 reno newReno BBR算法
+			huge page:2M/1G (分配大的内存页面，和nmap配合)
+			写入磁盘：BUG
+		能不能创建一个公共目录提交作业？
+
+ubuntu@VM-0-10-ubuntu:/user1$ nslookup www.baidu.com
+Server:		127.0.0.53
+Address:	127.0.0.53#53
+
+Non-authoritative answer:
+www.baidu.com	canonical name = www.a.shifen.com.
+Name:	www.a.shifen.com
+Address: 14.215.177.38
+Name:	www.a.shifen.com
+Address: 14.215.177.39
+
+ubuntu@VM-0-10-ubuntu:/user1$ dig www.baidu.com
+
+; <<>> DiG 9.11.3-1ubuntu1.11-Ubuntu <<>> www.baidu.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 37962
+;; flags: qr rd ra; QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 65494
+;; QUESTION SECTION:
+;www.baidu.com.			IN	A
+
+;; ANSWER SECTION:
+www.baidu.com.		505	IN	CNAME	www.a.shifen.com.
+www.a.shifen.com.	150	IN	A	14.215.177.38
+www.a.shifen.com.	150	IN	A	14.215.177.39
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.53#53(127.0.0.53)
+;; WHEN: Sat Jun 13 18:34:07 CST 2020
+;; MSG SIZE  rcvd: 101
+
+总结：自启动的时候 rcconf在/etc/rc5.d/S04brks --->/etc/init.d/brks
+2:域名，公网ip,租宽带，部署服务(IBM,新华三，思科)
+3：DNS --》cname
+	自研，BIND再去配置 ---》公网的ip和域名绑定（备案）
+
+	ipv4---》2的32次方，43亿，大约中国3亿个--》都是被联通移动电信等占用了
+		阿里云，腾讯云等都是租联通，移动，电信的ip
+	但是，怎么访问呢？
+		与网络建设有关，局域网套局域网~~~最上面一个公网ip
+4：网关： 中间有交换机，交换机阻止~ 中信部控制的
+	（如中国和蒙古之间，需要加光纤，海缆，中间通过交换机管理的）
+5：翻墙： --》因为防火墙做了域名过滤
+	代理的过程
+
+vps：国外的一个服务器，对国外的网站做一个封装
+vpn的客户端，对访问的信息加封装，发给vps，vps发给我们要访问的目标ip。
+
