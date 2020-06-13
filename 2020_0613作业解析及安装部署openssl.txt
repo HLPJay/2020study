@@ -1,0 +1,114 @@
+1：堆排序实现(链表/数组)时间轮时间。
+	开一个单位时间定时器，1ms，每一ms遍历，超时执行。
+	libevent的定时器实现 是通过epoll实现的？
+		epoll_wait()的最后一个参数也是一个超时参数，不是ms的意思
+	nginx用红黑树做定时任务
+	itimer linux系统提供的定时器~
+	用红黑树实现实现长连接？
+	用堆排序，可以用相对时间
+	红黑树存绝对时间
+2：红黑树的线程安全问题。
+	1：insert/delete 加锁  比较大粒度 （用的多）
+		直接对插入，删除做加锁 mutex
+		定义结构体的地方加一把锁  pthread_mutex_t 
+	2：锁子树：子树只允许一个线程操作。 锁的粒度小。（用得少，开销，复杂度） 频繁的加锁和解锁   最好用cas ---》判断指针的改变
+		每个节点处加个锁。  mutex//也可以用CAS
+//那就是原子操作了，增加一个变量，比如指针，当它为空，就表示没有线程进入，否则就表示已有线程进入
+
+开源加密库OpenSSL： 加密，解密，证书---》提供相关api
+https://www.OpenSSL.org/source/
+1：需要弄懂openssl中的： 编程必懂
+	hash
+	抽象io==》bio
+	base64
+	做摘要： md4,md5,SHA1
+	非对称加密：RSA
+
+	https握手~
+2：选对openssl的版本  old releases
+	tar -zxvf openssl-1.0.0s.tar.gz
+	./config
+	make -j
+
+	10亿数据是否存在，用bitmap ==》只是标识在与不在
+		存储==》用布隆过滤器+哈希
+		如何存储===》分库分表
+		MongoDB不是解决存储问题，而是解决插入速度，最近数据的查询
+3：编码实现哈希，用哪个库 stl  openssl 纯手写		
+	1:定义哈希
+	2：回调函数，类型是固定的，做对比用
+	不是线程安全的  要自己实现   
+	-lssl -lcrypto
+4：BOI抽象IO 内存，文件，日志，标准输入输出 socket 加密解密 摘要。。。
+	可以理解为linux的VFS ===》一堆api
+	基础的：	file_operation 中封装
+		open  write read
+5：base64： 原理 3字节一组，不够的后面补，对应的24bit，然后查表
+	base64 ebcode的过程是不安全的，只能一个线程
+
+	是一种编码方式：传输方便，没有特殊字符。 传输图片
+什么时候用base64？
+6：摘要   md4,md5,SHA1,SHA256,SHA512
+	最简单的CRC~  如判断有多少个1
+	md5是不可逆的 
+
+作业：理解BIO的实现，总结其实现方案。
+
+遇到的问题：
+	1：安装openssl的时候报内存不足，做交换内存的操作
+		 g++: internal compiler error: Killed (program cc1plus)
+Please submit a full bug report,
+		解决：
+		一、修改swappiness
+
+		1.查看你的系统里面的swappiness
+		$ cat /proc/sys/vm/swappiness
+		不出意外的话，你应该看到是 60，在阿里云看到的可能是0，那么就需要修改
+		2.修改swappiness值
+		$ sudo sysctl vm.swappiness=70
+		但是这只是临时性的修改，在你重启系统后会恢复默认的，所以，还要做一步
+		$ sudo vi /etc/sysctl.conf
+		在这个文档的最后加上这样一行:
+		vm.swappiness=60
+		然后保存，重启。ok，你的设置就生效了。
+二、增加swap分区大小
+
+		参考另一篇，传送门如下
+
+		http://www.cnblogs.com/iakud/p/3825848.html
+
+
+		在Linux编译gcc时，遇到编译错误，究其根源是因为内存不足，这时通过修改swap大小解决了问题
+		相关操作如下：
+		1. 查看当前分区情况
+		free -m
+
+		2. 增加 swap 大小, 2G 左右
+		dd if=/dev/zero of=/var/swap bs=1024 count=2048000
+
+		3. 设置交换文件
+		mkswap /var/swap
+
+		4. 立即激活启用交换分区
+		swapon /var/swap
+
+		5. 添加系统引导时自启动运行
+		vi /etc/fstab
+
+		添加一行
+		/var/swap swap swap defaults 0 0
+
+		6. 收回 swap 空间
+		swapoff /var/swap
+
+		7. 从文件系统中回收
+		rm /var/swap
+    
+   2：编译的时候遇到报错：
+	ubuntu@VM-0-10-ubuntu:/user1/openssl/test_code$ gcc -o bio bio.c -lssl -lcrypto
+	bio.c:4:10: fatal error: openssl/bio.h: No such file or directory
+	 #include <openssl/bio.h>
+	          ^~~~~~~~~~~~~~~
+	compilation terminated.
+
+	sudo apt-get install libssl-dev
