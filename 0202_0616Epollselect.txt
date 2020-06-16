@@ -1,0 +1,40 @@
+1：针对网络IO，，没有io多路复用时处理方法：
+	1：多开线程
+	2：recv所有io    ==》耗费资源
+	
+2：现在，专门用一个组件，判断io里有没有数据，然后针对性去处理==》select epoll  poll
+	select  是否可读     是否可写   是否出错
+		==》select相关参数
+
+3：网络io模型的五种定义：
+	信号驱动IO：
+	
+	
+	问题：信号量是啥？//软中断是啥？
+4：异步是啥？
+	作业：利用信号，实现linux中proactor。
+	当信号很多时，信号的方式是行不通的===》内核调用用户态切换，还有回调内存过大
+	如果一个io信号很多，排在队列中==》如果进程大量网络io处理，几百万的io处理~~
+5：select
+6:问题 ：
+	ET和LT什么时候用？ epoll的源码
+	
+	listen 半连接队列是啥？  三次握手，accept的队列从listen拿下来
+		syn队列，accept队列  
+		syn队列称为半连接   和 accept称为全连接
+	这里fork()端口不变
+	select/poll 
+		1：检测io是什么意思？
+		2：io可读可写的状态
+	events 的定义及使用？
+7:ET和LT什么时候用？
+	ET边沿触发：没有数据到有数据触发一次 ==》小块数据 (效率比较高) (有到无不会触发)
+	LT水平触发：有数据一直触发           ==》大块数据（也是循环尽可能多读） ===》listen的sockfd
+		尽可能多读~~~
+	ET的accept？？？不确定 一起触发，会有丢失~~
+8：poll和select poll只是把三个放在了一个结构体，性能是一样的。
+
+
+作业：利用信号，实现linux中proactor。
+ET和LT的差异：参考文档用代码验证：
+	https://blog.csdn.net/daaikuaichuan/article/details/88777274
