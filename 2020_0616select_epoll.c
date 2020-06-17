@@ -104,10 +104,10 @@ if(listen(sockfd, 5) <0)
 	//epoll通过红黑树组织所有的io  有io把io加到就绪队列（蜂巢）
 	//队列的节点在红黑树里，也在队列里
 	//epoll_create()  epoll_ctl()  epoll_wait()
-  int epfd = epoll_create(1); //size参数只有大于0和小于0的区别，没有意义 ==》最初有意义
+	int epfd = epoll_create(1); //size参数只有大于0和小于0的区别，没有意义 ==》最初有意义
 	struct epoll_event ev, events[EPOLL_SIZE] = {0};
 	ev.events = EPOLLIN;
-	ev.data.fd =sockfd;//用于epoll_wait时传出来
+	ev.data.fd = sockfd;//用于epoll_wait时传出来
 	epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev);//根节点 sockefd当key用 
 	while(1)
 	{
@@ -123,12 +123,13 @@ if(listen(sockfd, 5) <0)
 			if(events[i].data.fd == sockfd)
 			{
 				struct sockaddr_in clientaddr;
+				memset(&clientaddr, 0,sizeof(struct sockaddr_in));
 				socklen_t client_len = sizeof(clientaddr);
 				int clientfd = accpet(sockfd, (struct sockaddr*)&clientaddr, client_len);
 				if(clientfd<=0)
 					continue;
 				
-				ev.events = EPOLLIN | EPOLLET;
+				ev.events = EPOLLIN | EPOLLET; //设置触发方式 可以设置非阻塞和关闭后可重用
 				epoll_ctl(epfd, EPOLL_CTL_ADD, clientfd, &ev);
 			}else{
 				int clientfd = events[i].data.fd;
@@ -136,22 +137,34 @@ if(listen(sockfd, 5) <0)
 				int ret = recv(i, buffer. BUFFER_LEN, 0);
 				if(ret<0)
 				{
-					if(errno == EAGAIN ||errno = EWOULDBLOCK)//多线程操作可能别的已经读取了
-					{
-						printf("read all Data");
-					}else{
-						//调用send前要设置为out
-					}	
+					close(clientfd);
+
+					struct epoll_event ev1;
+					ev1.events = EPOLLIN; 
+					ev1.data.fd = clientfd;
+					epoll_ctl(epfd, EPOLL_CTL_DEL, clientfd, &ev1);
 				}else if(ret ==0)//断开 收到对方fin
 				{
 					printf("disconnect %d", i);
+					close(clientfd);
+
+					struct epoll_event ev;
+					ev.events = EPOLLIN; 
+					ev.data.fd = clientfd;
+					epoll_ctl(epfd, EPOLL_CTL_DEL, clientfd, &ev);
 				}else{
-					printf("RECV :%s, %d bytes \n", buffer, ret);
+					printf("RECV :%s, %d bytes from %d \n", buffer, ret, clientfd);
 				}
 			}
 		}
+		usleep(1000);
 	}
-	
 #endif
 
 }
+/********************************************
+有两个流程：
+	1：实现服务器的模块
+	2：实现io管理
+		实现通过io管理的处理
+**********************************************/
