@@ -1,0 +1,99 @@
+网络 IO===》涉及用户空间进程调用io和内核系统数据获取
+比如发生 IO 操作 read 时，它会经历两个阶段：
+	1. 等待数据准备就绪
+	2. 将数据从内核拷贝到进程或者线程中。
+
+1：五种IO模型分析：
+	1：阻塞IO： listen() send() recv()都是阻塞型的
+		改进：多进程/多线程。使用 pthread_create ()创建新线程，fork()创建新进程
+			线程池或者连接池也可以，如 websphere、tomcat 和各种数据库等。
+		问题：accept为什么能获取到多个请求？ （队列）
+	2：非阻塞IO： ===》设置socket非阻塞，当IO没有就绪，立即返回一个error
+		设置非阻塞：fcntl( fd, F_SETFL, O_NONBLOCK );
+		* recv() 返回值大于 0，表示接受数据完毕，返回值即是接受到的字节数；
+		* recv() 返回 0，表示连接已经正常断开；
+		* recv() 返回 -1，且 errno 等于 EAGAIN，表示 recv 操作还没执行完成；
+		* recv() 返回 -1，且 errno 不等于 EAGAIN，表示 recv 操作遇到系统错误 errno。
+		将数据从内核拷贝到用户区的时候进程会阻塞
+	3：多路复用IO ==>select poll epoll
+		实现了一个线程下的多个io请求。 ==》适用于IO比较多的场景
+		select()接口本身需要消耗大量时间去轮询各个句柄，且和执行在同一个流程里，会出问题
+		libev 库替换 select 或 epoll接口，实现高效稳定的服务器模型。（信号起到啥作用？）
+
+	4：异步IO： 主要用在IO磁盘读写如 aio_read, aio_write，
+		立即返回，kernel 等待数据准备完成，然后将数据拷贝到用户内存，
+		当这一切都完成之后，kernel 会给用户进程发送一个 signal，告诉它 read 操作完成了
+	5：信号驱动IO：
+		用户将整个IO交给内核完成，内核完成后发信号，在此期间，用户不用关注。
+2：高性能服务器程序通常需要考虑处理三类事件： I/O 事件，定时事件及信号：
+高效事件处理模型：reactor和proactor：
+	Reactor：非阻塞同步网络模型，关心就绪事件，可以理解为：来了事件我通知你，你来处理  ==》反应堆 ==》同步IO
+	Proactor：异步网络模型，关心完成，可以理解为：来了事件我来处理，处理完了我通知你。 ==》代理人 ==》异步IO
+
+	理论上：Proactor比Reactor效率要高一些。
+
+	proactor： boost的asio，wicp
+	reactor：  epoll,libevent。
+	   
+实际操作：
+	reactor：
+		1：- 注册读就绪事件和相应的事件处理器
+		2：- 事件分离器等待事件
+		3：- 事件到来，激活分离器，分离器调用事件对应的处理器。
+		4：- 事件处理器完成实际的读操作，处理读到的数据，注册新的事件，然后返还控制权
+	proactor：==》IO操作本身由操作系统来完成==》需要传递缓冲区地址和数据大小
+			==》建立在操作系统支持异步API的基础之上，依赖操作系统执行真正的IO。
+		1：- 处理器发起异步读操作（注意：操作系统必须支持异步IO）。在这种情况下，处理器无视IO就绪事件，它关注的是完成事件。
+		2：- 事件分离器等待操作完成事件- 在分离器等待过程中，操作系统利用并行的内核线程执行实际的读操作，并将结果数据存入用户自定义缓冲区，最后通知事件分离器读操作完成。
+		3：- 事件分离器呼唤处理器。
+		4：- 事件处理器处理用户自定义缓冲区中的数据，然后启动一个新的异步操作，并将控制权返回事件分离器。
+
+代码实现proactor的读写操作：
+	采用信号的方式，===》线程绑定io信号，IO有变化时，触发io对应的回调
+		等读完数据再去发信号，把buffer拿出来   
+3：思考：
+	定义信号，定义信号的回调
+	如何触发信号？
+	1：基于epoll实现proactor ===》实现完放到队列？？？
+	2：基于信号 实现proactor 
+	3: 事件分离器实现
+	4：分析libevent中proactor的实现。
+
+4：Libevent，libev，libuv 
+	libevent :名气最大，应用最广泛，历史悠久的跨平台事件库；
+	libev :较 libevent 而言，设计更简练，性能更好，但对 Windows 支持不够好；
+	libuv :开发 node 的过程中需要一个跨平台的事件库，他们首选了 libev，但又要支持Windows，故重新封装了一套，
+		linux 下用 libev 实现，Windows 下用 IOCP 实现；
+	优先级 
+		libevent: 激活的事件组织在优先级队列中，各类事件默认的优先级是相同的，可以通过设置事件的优先级使其优先被处理
+		libev: 也是通过优先级队列来管理激活的时间，也可以设置事件优先级
+		libuv: 没有优先级概念，按照固定的顺序访问各类事件
+	事件循环 
+		libevent: event_base 用于管理事件
+		libev: 激活的事件组织在优先级队列中，各类事件默认的优先级是相同的，
+		libuv: 可以通 过设置事件的优先级 使其优先被处理
+	线程安全 
+		event_base 和 loop 都不是线程安全的，==》在用户的一个线程内访问（一般是主线程），串行
+		每个执行过程中，会按照优先级顺序访问已经激活的事件，执行其回调函数。
+		所以在仅使用一个event_base 或 loop 的情况下，回调函数的执行不存在并行关系
+
+	struct sigaction reaction;
+	sigemptyset (&reaction.sa_mask);   // Nothing else to mask.
+	reaction.sa_flags = SA_SIGINFO;    // Realtime flag.
+	reaction.sa_sigaction = ACE_SIGNAL_C_FUNC (sig_handler); // (SIG_DFL);
+	int sigaction_return = ACE_OS::sigaction (signal_number,&reaction,0);
+	if (sigaction_return == -1)
+	ACELIB_ERROR_RETURN ((LM_ERROR,ACE_TEXT("Error:%p\n"),ACE_TEXT("Proactor couldnt do sigaction for the RT SIGNAL")),-1);
+					  
+	struct sigaction sigio_action;
+	sigio_action.sa_flags = 0;
+	sigio_action.sa_handler = do_sigio;
+	sigaction(SIGIO, &sigio_action, NULL);//SIGIO 信号
+	
+	
+	
+	实现udp的客户端和服务端测试
+	实现tcp的客户端和服务端测试
+	实现http的客户端和服务端的测试
+	实现epoll的测试 
+	实现accept read write的测试 ===》分析accept的时机,(信号测试代码)
