@@ -1,0 +1,16 @@
+无锁多线程
+无锁多队列
+提高并发，自己实现协议栈？
+dpdk ===》比linux内核协议栈快很多
+	https://www.jianshu.com/p/0ff8cb4deaef
+	https://mp.weixin.qq.com/s?__biz=MzA3ODgyNzcwMw==&mid=202113096&idx=1&sn=7ce616f596c529890dfd475ce8d31858&scene=4##
+	
+http  chunked  分块编码===》http中
+hash的实现 
+	hash的实现
+	redis hash
+	nginx的hash
+ifstat 的学习  ===》统计网络接口流量，查看网速
+	ifstat工具是个网络接口监测工具,比较简单看网络流量
+	iftop是一款实时流量监控工具,监控TCP/IP连接等,缺点就是无报表功能。必须以root身份才能运行。
+协议栈的概念
