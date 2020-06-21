@@ -1,0 +1,120 @@
+nginx的学习及其操作：
+	1：nginx ==》正向代理，反向代理，邮件代理，TCP/UDP代理服务器
+		加速，负载均衡，容错，过滤器，分块响应，SSL和TLS SNI支持，加权和依赖关系优先级
+	2：其他服务器功能 ==》虚拟服务器，保持活动和管道连接，访问日志格式，缓冲日志写入
+		错误码重定向（3xx-5xx）,重写模块，访问控制，响应速度限制，限制连接或请求数量，基于ip地理定位
+	3：nginx使用可扩展的事件驱动框架==》占用内存少，并发大
+	   nginx 模块化，事件驱动，异步，单线程web服务器和web代理
+	   nginx选择epoll和kqueue作为开发模型
+		    epoll, kqueue是Reacor模式，IOCP是Proactor模式
+	   nginx大量使用复用和事件通知
+	4：nginx核心代码分析：
+		核心模块，阶段处理模块，协议，可变处理程序，过滤器，上游和负载均衡 ==》不支持动态加载
+		kqueue,epoll和事件端口机制==》及时获取入站和出站流量，磁盘读写，读取和写入套接字，超时等异步反馈
+		阻塞的情况：工作进程没有足够的磁盘空间
+	5：如果负载模式是 CPU 密集型的，
+ 	例如，处理大量 TCP/IP，执行 SSL 或压缩，则 nginx 工作(worker)的数量应与 CPU 内核数量相匹配; 
+	     如果负载大多是磁盘 I/O 绑定，
+	例如，从存储或重代理服务不同的内容集合 - 工作(worker)的数量可能是核心数量的一到两倍。
+	     有些工程师会根据个人存储单元的数量选择工作(worker)的数量，但这种方法的效率取决于磁盘存储的类型和配置。
+	6：一个主进程，多个工作进程。===》工作进程，缓存加载器进程
+		1.x  ===>所有进程都是单线程
+		进程使用共享内存机制进行进程间通信。
+	7：nginx缓存==》可配置===》缓存的响应放在文件系统上的不同文件中
+	
+	8：nginx的安装：
+		tar -zxvf nginx-1.13.7.tar.gz
+		tar -zxvf openssl-1.1.0g.tar.gz 
+		tar -zxvf pcre-8.41.tar.gz 
+		tar -zxvf zlib-1.2.11.tar.gz 
+		./configure --prefix=/usr/local/nginx --with-http_realip_module --with-http_addition_module --with-http_gzip_static_module --with-http_secure_link_module --with-http_stub_status_module --with-stream --with-pcre=/home/ubuntu/install_code/nginx/pcre-8.41 --with-zlib=/home/ubuntu/install_code/nginx/zlib-1.2.11 --with-openssl=/home/ubuntu/install_code/nginx/openssl-1.1.0g
+		make
+		sudo make install  ==》查看在/usr/local目录下产生nginx目录：
+		cd /usr/local/nginx
+		sudo ./sbin/nginx -c ./conf/nginx.conf
+		然后在网页上输入本机ip查看效果。
+		用ps afx|grep nginx查看效果
+		pcre ==>做正则表达式的
+		zlib ==》做编码的
+	9：主进程：读取和评估配置，维护工作进程
+		工作进程：对请求进行实际处理
+			时间模型和依赖操作系统机制。
+	10：nginx的启动：
+			cd /usr/local/nginx
+		    sudo ./sbin/nginx -s reload   ==》重新载入配置文件
+			sudo ./sbin/nginx -s reopen   ==》重启nginx
+			sudo ./sbin/nginx -s stop     ==》快速关闭nginx
+			sudo ./sbin/nginx -s quit     ==》正常关闭nginx
+			
+			netstat -naop|grep 80
+	11：实例：提供静态内容服务（文件和图片）
+		1：自己配置nginx服务器和测试访问
+			
+		2：nginx实现代理的测试
+		3：nginx实现访问图片
+				http://106.55.241.59:8080/images/mytest1.jpg  ==》界面显示好慢
+			分析nginx启动时，配置文件中的server和location的关系。
+				路径是根据正则匹配出来的，具体资源是根据名称去磁盘访问的。
+		4：通过代理多个服务器实现负载均衡。
+			==》根据权重比设置访问次数
+			==》根据哈希
+			五种方式做负载均衡
+		5：cgi ==》每来一个请求，新建一个进程
+			nginx支持的是fcgi ==》一般Python和php比较多，也有c的
+			 统称都是协议 
+			1：启动cgi的库 spawn-fcgi-1.6.4.tar.gz ==>进程池，启动cgi
+				解压后， ./configure  make   ==>然后把生成的bin文件拷贝到nginx的同目录下：
+						sudo cp spawn-fcgi /usr/local/nginx/sbin/
+			2：开发cgi的库：            ==》协议，开发cgi
+				tar zxvf fcgi.tar.gz
+				./configure
+				make  ==>会报错，因为vim include/fcgio.h文件中缺少头文件 #include <stdio.h>
+				sudo make install
+			3：原理：
+				cgi会监听一个端口，如9002， nginx收到发给它，
+				    spawn启动进程池，对这个接口，管理cgi程序。
+					用途：不需要对数据库进行操作，一些简单的操作，用cgi来操作。
+	===》暂时云服务器全都放开端口了，修改了安全组里ALL 	一键放通入站规则
+			4：输入可以考std输入输出流进行输入
+				输出可以考printf直接输出
+				写cgi测试代码并运行测试。
+					#include <stdio.h>
+					#include <fcgi_stdio.h>
+
+					int main()
+					{
+					//重定向了stdin和stdout
+						while(FCGI_Accept() >=0)
+						{
+							printf(" Contant-type: text/html\r\n");
+							printf("\r\n");
+							printf("<title>fast cgi hello! </title>");
+							printf("<h1> hlp cgi</h1>");
+							printf("Thank you cgi.!");
+						}
+						return 0;
+					}
+				测试编译：
+					gcc 0621_nginx_cgi.c -o 0621_nginx_cgi -lfcgi
+					可以直接测试运行： ./0621_nginx_cgi   ==>发现找不到so，==》把相关的so拷贝到/lib/目录下
+				配置fcgi的运行：
+					./spawn-fcgi -a 127.0.0.1 -p 9002 -f /home/ubuntu/code/nginx/0621_nginx_cgi
+				然后配置nginx并启动
+					./sbin/nginx -c ./conf/test_conf/fcig.conf
+				测试==》http://106.55.241.59:9000/0621_nginx_cgi.cgi
+	
+				思考：界面上的编译+显示结果的原理
+	12：虚拟服务器，
+			==》如已经启动了多个服务器，不同端口。 ===》一个配置文件里可以配置多个服务器
+			==》作用：一个服务器配置不同资源，如图片和js分开
+			
+	13：可以在配置文件中配置特定的状态返回页
+	遗留问题：
+		1：nginx安装命令中相关模块的含义
+		2：netstat命令   查看进程运行的端口号怎么查？
+		3：遇到问题：
+		ubuntu@VM-0-10-ubuntu:~/code/nginx$ ./0621_nginx_cgi 
+./0621_nginx_cgi: error while loading shared libraries: libfcgi.so.0: cannot open shared object file: No such file or directory
+		ubuntu@VM-0-10-ubuntu:/usr/local$ cd lib/
+		ubuntu@VM-0-10-ubuntu:/usr/local/lib$ sudo cp libfcgi* /lib/
+		
