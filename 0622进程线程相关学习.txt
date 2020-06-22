@@ -1,0 +1,152 @@
+相关基础概念：https://github.com/21cnbao?tab=repositories   
+			  https://www.bilibili.com/video/BV1V7411f7oG?p=2
+	1：进程 fork
+		资源分配单位，linux继承控制块PCB   task_struct (链表（遍历），树（父进程），哈希（方便检索）)（内存，文件等资源，fs,signal）
+		进程的生命周期
+			就绪    运行（时间片用完，被强占）  睡眠状态
+			僵尸进程 ==》已经死了，父进程没有清理， ==》一般状态很短
+					--》task_struct没有消失 (里面的资源消息，等待父进程) ==》资源释放无内存泄漏
+					===》可以知道子进程的死因--》父进程调用waitpid()
+						运行测试代码。 life_period.c
+							 用kill -2    -9去杀看运行结果
+						父进程不回收，子进程被杀后一直僵尸，进程一直存在，要清除，智能杀父进程
+				内存泄漏 ---》进程活着，运行越久，耗费内存越来越多。
+					如何观察：持续运行，连续多个点采样。
+			暂停 ==》停止态  stop ctrl+z （停而不死，job control JC）  gdb attach debug  ===>暂停   （ctrl+z  fg/bg）
+						cpulimit===》让进程周期停止，运行
+					（暂停当时运行态，限制性其他）
+					top查看cpu利用率 
+					cpulimit -l 10 -p pid  限制pid使用率10%
+			深度睡眠： 只能被资源唤醒， ==》不响应任何信号
+				代码段在硬盘中，需要从硬盘中读取，深度睡眠 ==》（内存管理Page Fault.）
+				内核一般控制。
+			浅睡眠：资源来，信号来也醒来==》我们一般浅睡眠
+		fork()： ==》fork测试，父进程fork返回值是子进程的pid，子进程fork返回值是0
+			获取子进程的pid，获取父进程的pid
+			有独自的 task_struct 
+				==>linux认为子进程和父进程开始是一样，谁动资源，开始分裂资源。（内存资源最难分裂）
+			测试代码===》同一个资源，其中一个进程改内存资源
+				==》copy on write写时复制 （严重依赖CPU MMU）
+						RD-only ==》CPU就会收到 page fault
+		vfork() 会阻塞父进程
+			父子进程指向同一块内存资源。     ==》不进行内存分裂
+				pthread_create->clone 调的克隆
+					可以设置，可以使子进程，完全相同，两个task_struct 指向同一个资源
+		pid和 tGId ===》每个线程的pid应该相同，tGId 
+				===》getpid()==>虚假的pid  ===》如同top命令看，同一个进程的占用率  top -h ==》可以查看每个线程的占用率
+				gettid() ==>实际pid
+		进程的托孤： ==》孤儿总是被收取
+			托孤给subreaper ==》可以设置，（收割机，火葬场）
+			托孤给init
+		进程的深度睡眠和浅度睡眠： ===》等待队列，add_wait_queue() ===>唤醒一个队列  （非阻塞返回错误码，goto）
+			深度睡眠 ==》page fault后执行IO 的情况。
+		第一个task_struct怎么来的？  init？
+			cd /proc 
+			cd 1
+			sudo cat status  ===>看到1进程的父进程是0进程（IDLE进程）=
+					=》所有进程都停止或者睡眠，调度进程0跑，cpu进入很省电的一个模式（低功耗），
+						==》随便一个进程被唤醒，0就不跑了
+	2：线程 ==》调度的基本单位
+	
+	3：指针
+	4：智能指针
+	
+	
+遗留问题：
+	1：linux中的信号  kill -2 / kill-9 ==》用kill -l查看
+	2: 测试代码的运行
+	3：作业控制   停止态： ctrl+z  fg  ==>前台运行    bg===》后台
+	              cpulimit ===》可以限制cpu使用率， 让进程暂停，继续
+	4：使用top+cpulimit运行测试查看停止态
+	5：父子进行的执行顺序可以设置。
+	6：推荐书籍：Operating System: Three Easy Pieces
+	7：测试父子进程调用内存资源。
+	8：copy on write写时复制的原理 ===》
+	9：vfork和pthread_create的clone()
+	10：getpid()和gettid() top和top -h
+	11：深度睡眠和浅睡眠的代码逻辑。  ===》查看测试代码 查看MMU ==》微机原理
+	12: 0进程 init的父进程，（进程0退化成IDLE进程）和0进程的运行逻辑
+	13：proc目录中线程的理解， 进程的子进程  /proc/进程id/task
+	
+	task_struct 中结构指针分别代表不同的资源，内存资源最难分裂。
+		子进程修改一个变量，写实复制，修改==》执行效率是比较低的。
+		共享资源 vfork()   ===>可以把进程线程改成人妖
+	
+	父进程和子进程同一个虚拟地址
+	exec原理是啥？
+		
+调度算法：
+	1：吞吐和响应==》矛盾  服务器照顾吞吐，桌面照顾响应
+	2：进程的切换，cpu cache miss消耗性能
+	3: preemption model ===>安装时选择调度算法
+	4：小核cpu==》执性io消耗型   大核cpu
+		CPU消耗型 ==》多数花在CPU上运算上
+	   I/O消耗型 ==》等串口，键盘，SD卡等==》然后dma执行 ==》CPU强不强不关注，及时拿到
+				==》及时拿到cpu，影响用户体验 ==》对优先级要求很高
+				big.LITTLE ===>可以把I/O消耗型放在这个执行，比较大的CPU做cpu消耗率
+	5：优先级和bitmaps ==>linux内核2.6版本前
+			0~139 越小优先级越高 
+				0~99 Rt ==》SCHED_RR（轮流跑） ,SCHED_FIFO（先进先出）
+				100~139  普通进程（在不同优先级轮转，-20到19的nice值） ==》nice值影响奖罚 越睡优先级越高 为了IO有限于CPU消耗型
+					==》只是会抢一下低优先级，然后轮询     时间片   
+				后面：linux加了补丁 在period时间里RT最多只能跑runtime时间 ==》RT的门限
+				限制一个核1s中rt执行
+					/proc/sys/kernel/sched_rt_period_us   ==>FIFO RR
+					/proc/sys/kernel/sched_rt_runtime_us  
+	6：CFS完全公平调度算法 （追求虚拟时间的最终相等）   ==》红黑树
+			==》运行到目前vruntime的最小进程
+			==》同时考虑了CPU/IO和nice  ===》调整运行时间比   根据nice值求比值
+		实现测试：
+			两个cpu密集型的测试代码，查看代码nice值去自己设置测试==》实现cpu调用比
+			1：sudo renice -n -5 -g 进程id  ==》设置nice值
+	7：设置SCHED_FIFO和SCHED_RT优先级？
+	8：chrt -f -a -p 50 10576  ==》-f SCHED_FIFO -a所有
+			==》cpu稍微降了，但是电脑运行缓慢了 ==》鼠标点击优先级低于设置后的这个了
+		设置nice：
+			renice -n -5 -g
+			nice                 ===》线程为单位
+		调度相关的系统调用api
+	8：作业：
+负载均衡：
+	1:以前的内核是nice +-5奖罚算法
+	  现在是CFS算法实现的
+	2:双核  2个线程跑while(1)的死循环  ==》200% 均分到两个核
+		用time命令跑进程，可以查看时间
+	3：RT负载均衡：优先级最高的 pull_rt_task()  push_rt_task() 
+	   普通进程： 周期性负载均衡。IDLE时负载均衡（一个核跑0，另一个核满，会分）。fork和exec时负载均衡。
+	4：接口设置 affinity
+		taskset设置 task -a -p 01 进程号    ===》设置进程号在01核运行上
+	5：中断负载均衡 
+		软终端==》RPS将包处理负载均衡到多个cpu
+	6：cgroup 进程的分群   ===》群的级别一样分cpu  群内再调度
+		创建两个cgroup
+			cd /sys/fs/cgroup/cpu/ mkdir A B 
+		分别给组下加进程
+			sudo -c "echo 20756" >cgroup.procs
+		cpu.cfs_period_us ==》周期
+	可以设置quota。。。  Android使用了cgroup	
+		cpu.cfs_quota_us 
+	docker也可以使用cgroup，启动会自动创建一个cgroup
+	
+	7：硬实时系统： 不能超过一个时期，超时会灾难性
+	   软实时系统：
+		sudo cyclictest -t1 -p 99 -n  //linux不是硬实时调度
+	8：四类区间：
+	    中断
+		软中断   （不能嵌套，可以被中断打断）==》可以查看中断控制器
+		进程    spin_lock(强占...)     ===》前三类不允许被抢占
+		        可调度的进程上下文     ===》只有第四类可以抢占 ===》调度策略是进入第四类区间
+	9：spin_lock 发生在两个核之间
+		优先级继承，
+		优先级反转问题
+		中断线程化
+		软中断线程化
+				===》linux把前三类区间转成了第四类    ===》RT补丁，完全抢占模式
+	10：linux中的FIQ和IRQ
+		一句话中断不能被抢
+	
+	进程是资源封装单位，线程是调度的单位
+	尽可能把io消耗放在小核
+	这里bitmap的应用？
+	默认情况下nice都是0的普通线程
+	LMbech  ==>cache miss
