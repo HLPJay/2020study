@@ -1,0 +1,384 @@
+进程间通信：
+	https://www.bilibili.com/video/BV1tJ41117ty?from=search&seid=2644294137907338951
+	1：进程间通信==》用户空间是不可能实现的。
+		如何先运行父进程，在运行子进程
+	2：线程  pthred_create
+		在用户空间可以实现通信。==》可以设置个变量
+	3：进程间通信：
+		无名管道和有名管道
+		信号通信
+		IPC ==》共享内存，消息队列，信号灯
+		socket实现的进程通信  ==》属于网络间
+	4：无名管道：==》其实是队列（入队）
+		    内核的管道，由队列实现，是一个特殊的文件。
+			由pipe创建，系统函数 ==》只需要文件描述符
+				返回两个文件描述符，一个出队（读），一个入队（写）
+			open()文件名称，权限，读写执行
+				创建成功打开文件描述符从3开始
+		1：单个进程实现，一个写，一个读。 ==>读完就删除了
+				#include <stdlib.h> 
+				int main()
+				{
+					int fd[2];
+					int ret;
+					char writebuff[] = "hello hlp";
+					char readbuff[128] = {0};
+					ret = pipe(fd);
+					if(ret<0)
+					{
+						printf("create pipe error. \n");
+						return -1;
+					}
+					printf("create pipe success fd[0] = %d, fd[1]=%d", fd[0], fd[1]);
+					
+					write(fd[1],writebuff,sizeof(writebuff));
+					read(fd[0], readbuff, 128);
+					prinft("readbuff is %s \n",readbuff);
+					close(fd[0]);
+					close(fd[1]);
+					return 0;
+				}
+			验证：读完就没有， 
+			验证：管道没有数据，会读阻塞。
+				==》先删除readbuff再读  ==》查看进程处于睡眠状态
+			验证：写阻塞
+			无名管道不能实现非父子进程的通信。
+		2：进程间管道通信。
+			父子进程 ：在两个进程前创建管道，父进程写，子进程读。==》设置先后顺序
+			
+	5：有名管道：==》创建管道文件（只有文件节点），open打开时内核生成管道
+		文件系统中存在文件节点。 文件类型：管道文件-》p  mkfifo
+	
+		验证：多进程之间使用管道来进行通信。 ==mkfifo
+		验证：新建的管道文件与umask的关系
+		
+		mkfifo：并没有在内核中生成管道，只是生成了一个文件。
+		当我们用open函数打开时，才会在内核中创建管道。
+		
+		生成节点 ===》mkfifo
+		生成管道 ===》open打开管道文件，O_WRONLY   O_RDONLY
+		向管道中写 ==》进程1
+		从管道中读 ==》进程2     
+			
+		2：多个线程，一个写，一个读
+	
+	6：信号通信 ==》通信对象是信号
+			==》也是内核操作信号
+		查看内核信号 kill -l
+		信号id和要发给谁 pid
+		
+		通过内核发信号，    kill命令，kill(pid,sig)
+		操作：写一个测试，实现kill的功能==》传参。 
+		raise()  发信号给自己，只有一个参数，sig   raise(9)相当于_exit()
+		
+		操作：父子进程，用raise()信号暂停
+			与waitpid()使用杀进程
+		
+		alarm()只会发一种信号，只会发送给当前进程   ==》闹钟信号（定时一段时间）
+			参数 是延时时间==》等待时间后收到信号
+	信号的接收   pause()==>进程睡眠   sleep()+while()
+		ctrl+c如何发信号？  靠键盘驱动
+	信号的处理：   signal()   参数：1，处理的信号。 2，怎样处理信号
+		自己实现信号的处理：
+			signal第二个参数不同的处理方案。
+				SIG_IGN:忽略该信号   SIG_DFL :系统默认处理   自定义处理函数
+				
+		操作：实现signal信号的测试。 父子信号，僵尸进程  exit发送的信号？
+			父子信号通过信号通信。
+			信号实现进程间通信
+			
+	7：ipc通信，ipc对象：共享内存，消息队列(内核)，信号灯
+			以文件io的思想学习。
+			Msg_get 
+			shm_get
+			sem_get
+		共享内存： 创建 Shm_get      IPC_PROVATE或者ftok，内存大小，权限
+				   
+				   int key;
+				   
+				   key = ftok("./a.c", "a");
+				   if(key<0)
+				   {
+						return -1;
+				   }
+				   int ret = shmget(key,128, IPC_CREAT|0777);
+				   //int ret = shmget(IPC_PROVATE,128, 0777);  ==>创建共享内存 类似open   其实就是缓存，类似数组
+					if(ret<0)
+					{
+						prinft("create share momory failed .")；
+						return -1；
+					}
+					prinft("create share momory success .")；
+			
+					system("ipcs -m");   ==>查看共享内存
+					system("ipcrm -m ret");==》删除共享内存
+			操作：两种不同方式创建共享内存的测试。 ftok （可以实现无亲缘关系的通信）和IPC_PROVATE
+			
+			shmat 把内核缓存映射到用户空间 就可以memcpy或者其他写操作    printf fput进行读
+				id号    映射的地址  权限
+				
+				char *p;
+				p = (char *)shmat(ret, NULL, 0); ==>映射共享内存，方便读写操作
+				fgets(p,128,stdin);  ==》写
+				printf("%s", p);
+				
+			 共享内存，读完之后依然存在。。
+				用完要释放，内核里和用户的缓存都得释放
+				
+				shmdt==》释放用户态 地址映射删除 
+				
+				shmdt(p);  //映射的在用户空间的共享内存
+					//释放后使用肯定会出文艺 如memcpy
+					
+				shmctl 读取内核空间共享内存的属性，设置对象属性，删除对象
+					删除的时候，第三个参数可以为NULL
+					
+				shmctl(ret,IPC_RMID,NULL); ==>删除共享内存
+				system("ipcs -m");  ==>查看还存在不
+			
+			自己实现rpc -m shmid ==》
+				int main(int argc,char *argv [])
+				{
+					if(argc<3)
+					{
+					return -1;
+					}
+					if(strcmp(argv[1], "-m") == 0)
+					{
+					
+					}else
+					{
+					return -1;
+					}
+					shmid = atoi(argv[2]);
+					shmctl(shmid,IPC_RMID,NULL); ==>删除共享内存
+					system("ipcs -m");	
+				}
+			也可以实现ipcrm -m ret命令。
+		
+		操作：通过共享内存实现进程间通信
+			1：实现父子进程的通信,
+				
+				 int shmid = shmget(IPC_PROVATE,128, IPC_CREAT|0777);
+				 if(shmid<0)
+				{
+					prinft("create share momory failed .");
+					return -1；
+				}
+				prinft("create share momory success .");
+				pid = fork(); //一定要放在创建共享内存之后
+				if(pid>0)
+				{
+					signal(SIGUSR2, myfunc);
+					p=(char *)shmat(shmid,NULL, 0);////需要映射共享内存
+					while(1)
+					{
+						fgets(p,128,stdin);
+						kill(pid, SIGUSR1);
+						pause();
+					}
+				}if(pid = 0)
+				{
+					signal(SIGUSR1, myfunc); //myfunc一个空的回调处理函数
+					p=(char *)shmat(shmid,NULL, 0); //需要映射共享内存
+					while(1)
+					{
+						pause();
+						printf("%s",p);
+						kill(getppid(), SIGUSR2);
+					}
+				}
+			2:实现进程间通信  单向，双向可以参考（两个共享内存实现）
+			struct mybuf
+			{
+				int pid;
+				char buff[124];
+			};
+				server.c 使用ftok实现
+					int key;
+				   
+				   key = ftok("./a.c", "a");
+				   if(key<0)
+				   {
+						return -1;
+				   }
+				   int ret = shmget(key,128, IPC_CREAT|0777);
+				   //int ret = shmget(IPC_PROVATE,128, 0777);  ==>创建共享内存 类似open   其实就是缓存，类似数组
+					if(ret<0)
+					{
+						prinft("create share momory failed .")；
+						return -1；
+					}
+					prinft("create share momory success .")；
+					while(1);
+					
+					
+					signal(SIGUSR2, myfunc);
+					struct mybuf  *p;
+					p = (struct mybuf *)shmat(ret, NULL, 0); ==>映射共享内存，方便读写操作
+					
+					p->pid = getppid()
+					pause(); ==>客户端读
+					pid = p->pid; ==>读客户端pid
+					while(1)
+					{
+						fgets(p->buff,128,stdin);
+						kill(pid, SIGUSR1);  //给客户端发信号
+						pause();
+					}
+				client.c
+					==>通过ftok 同一个文件创建的共享内存是一样的，可以打印查看
+					需要信号通信，互相获取pid，
+					实现方案，可以先把pid写入到共享内存中先获取
+					
+					客户端先获得服务端pid
+					读共享内存
+					把自己pid写入到共享内存
+					pid = p->pid;
+					p->pid = getpid();
+					kill(pid, SIGUSR2);
+					while(1)
+					{
+						pause();
+						printf("%s",p->buff);
+						kill(pid, SIGUSR2); //告诉服务器端可以写了，我们读过了
+					}
+	8：消息队列：
+		内核空间消息队列，   用户空间a写入，b读出
+		管道也是队列，数组顺序队列
+		msqid ===》内核中消息队列结构体的定义？   链式队列，每种消息数据和类型可以不同
+			1：创建/get消息队列  msgget
+			2：删除消息队列  msgctl
+			3：队列的插入    msgsend   ==》write
+			4：	队列的删除   msgrcv   ==》read
+	struct msgbuf
+	{
+		long type;
+		vahr volate[124];
+		char ID[4];
+	};
+			#include "sys/msg.h"
+			
+			int msgid;
+			msgid = msgget(IPC_PRIVATE, NULL, 0777);
+			if(msgid<0)
+			{
+				return -1;
+			}
+			system("ipcs -q");
+			struct msgbuf sendbuf;
+			sendbuf.type = 100;
+			fgets(sendbuf.volate,124,stdin);
+		//写入到内核哪个文件fd， 写哪些内容， 字节数 阻塞方式还是非阻塞
+		//一般写入消息类型和消息正文
+		msgsend(msgid, (void*)&sendbuf, strlen(sendbuf.volate),0);
+		//while(1);==》观察写入  用ipcs -q查看
+			
+		//从哪个消息读，读到哪里去，读的大小，消息类型，阻塞非阻塞
+		struct msgbuf recvbuf;
+		memset(recvbuf.volate,0,124);
+		int ret = msgrcv(msgid,(void*)&recvbuf, 124,100,0);
+		printf("recvbuf :%s");
+		
+		ret = msgrcv(msgid,(void*)&recvbuf, 124,100,0);
+		printf("recvbuf :%s"); ==>读第二次，验证数据是否还存在 
+			//IPC_STAT IPC_SET等的意义
+	//msgctl实现修改，读取消息队列
+			msgctl(msgid, IPC_RMID, NULL); //删除消息队列 读取，修改怎么实现？
+			system("ipcs -q");
+		
+		消息队列，读完节点就删除了。
+	
+	
+	消息队列实现进程间通信： 实现单向进程
+		
+	write.c ==>ftok创建同一个消息队列
+			#include "sys/msg.h"
+			
+			int msgid;
+			int key = ftok("./a.c", a);
+			if(key<0)return -1;
+			
+			msgid = msgget(key, IPC_CREAT|0777);
+			if(msgid<0)
+			{
+				return -1;
+			}
+			system("ipcs -q");
+			
+			struct msgbuf sendbuf;
+			sendbuf.type = 100;
+			while(1)
+			{
+				memset(sendbuf.volate, 0,124);
+				fgets(sendbuf.volate,124,stdin);
+				msgsend(msgid, (void*)&sendbuf, strlen(sendbuf.volate),0);
+			}
+			
+
+			msgctl(msgid, IPC_RMID, NULL); //删除消息队列 读取，修改怎么实现？
+			system("ipcs -q");
+
+
+	read.c ==>ftok创建同一个消息队列
+			#include "sys/msg.h"
+			
+			int msgid;
+			int key = ftok("./a.c", a);
+			if(key<0)return -1;
+			
+			msgid = msgget(key, IPC_CREAT|0777);
+			if(msgid<0)
+			{
+				return -1;
+			}
+			system("ipcs -q");
+			
+			struct msgbuf recvbuf;
+
+			while(1)
+			{
+				memset(recvbuf.volate, 0,124);
+				fgets(sendbuf.volate,124,stdin);
+				msgrcv(msgid, (void*)&recvbuf, 124,100,0);
+				printf("%s \n",recvbuf.volate)
+			}
+			
+			msgctl(msgid, IPC_RMID, NULL); //删除消息队列 读取，修改怎么实现？
+			system("ipcs -q");
+
+
+	不用信号触发，可以设置阻塞方式
+双向通信：
+	通过同一个消息队列，实现可以读和可以写。 通过消息类型不同
+		server.c ==>父进程写，子进程读。
+		client.c ==》父进程读，子进程写，通过type不同
+	如果有问题可以 用ipcs -q查看，删除相关的进程
+
+9：信号灯   ==》信号量的集合
+
+		创建/打开 semget()    key，结合数目，权限，返回信号灯集合id号	
+		删除     semctl()   信号灯集，要修改的信号灯编号，删除
+				sem_wait()
+				sem_post()
+		#include "sys/sem.h"
+		ipcs -s查看
+
+
+
+
+
+
+
+
+
+	
+	练习：使用pipe创建管道测试，测试参数和返回值。 fd[0] =3 fd[1] = 4
+	延伸：
+	七种文件及文件标号：	
+		普通文件，目录文件，链接文件（软链接），管道文件，套接字文件，设备文件（块设备，字符设备），
+	特殊的文件？？？
+		有名管道，套接字，块设备文件，只有节点，不占磁盘空间
+	文件权限与umask的关系？  umask命令及所用
+	ctrl+c如何发信号？  靠键盘驱动
+	ipcs -m和ipcrm -m id号    共性内存相关命令
