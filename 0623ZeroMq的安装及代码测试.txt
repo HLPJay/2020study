@@ -1,0 +1,45 @@
+ZMQ的学习和测试：   ===》消息队列
+ 	1：mq是什么，解决什么问题，什么时候用？有哪些好处？
+	2：安装mq
+	安装前必须的库：
+		 sudo apt-get install libtool 
+		 sudo apt-get install pkg-config
+		 sudo apt-get install build-essential
+		 sudo apt-get install autoconf
+		 sudo apt-get install automake
+	从github上下载并安装sodium库      ===> 加密，解密，签名，密码哈希
+		https://github.com/jedisct1/libsodium 
+		
+		 1779  2020-06-23 17:25:48 git clone git@github.com:zeromq/libzmq.git
+		 1781  2020-06-23 17:29:28 git clone  git://github.com/jedisct1/libsodium.git
+		 1783  2020-06-23 17:30:57 cd libsodium/
+		 1785  2020-06-23 17:31:10 ./autogen.sh -s
+		 1786  2020-06-23 17:31:30 ./configure && make check
+		 1787  2020-06-23 17:32:52 sudo make install
+		 1788  2020-06-23 17:33:01 sudo ldconfig
+		 1789  2020-06-23 17:33:08 cd ../
+	安装zmq：
+		 1791  2020-06-23 17:33:13 cd libzmq/
+		 1792  2020-06-23 17:33:18 git tag
+		 1793  2020-06-23 17:33:40 git checkout v4.3.2
+		 1794  2020-06-23 17:33:49 git branch
+		 1795  2020-06-23 17:33:56 ./autogen.sh 
+		 1796  2020-06-23 17:34:23 ./configure && make check
+		 1797  2020-06-23 17:38:56 sudo make install
+		 1798  2020-06-23 17:39:30 sudo ldconfig
+
+		git clone git@github.com:zeromq/libzmq.git
+	3：mq各种模型的运行和整理：
+		获取测试的代码：==》使用cmake进行编译
+ 1829  2020-06-23 17:52:50 mkdir build
+ 1830  2020-06-23 17:52:51 cd build/
+ 1831  2020-06-23 17:52:52 ls
+ 1832  2020-06-23 17:52:55 cmake ..
+ 1833  2020-06-23 17:52:58 make
+
+			
+	
+	遗留：
+		1：研究zmq的依赖库的作用。
+		2：sodium库的作用及相关静态编译
+		3：zmq的测试代码和编译
