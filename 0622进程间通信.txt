@@ -364,7 +364,111 @@
 		#include "sys/sem.h"
 		ipcs -s查看
 
-
+多线程测试： ==>可以通过man函数查看头文件 pthread_create
+		1：全局变量实现的通信。   实现父进程先运行，子进程后运行
+		2：信号量实现。  semaphore.h
+			sem_t sem;   定义信号量
+			sem_init(&sem , 0 , 0);   初始化 第一个0 线程
+			
+			sem_wait(&sem);   wait等待 p操作
+			sem_post(&sem);   v操作  唤醒
+			
+		3：ipc信号灯实现。   sys/ipc.h    sys/sem.h 
+			int semid;   
+		//定义信号灯	
+			semid = semget(IPC_PRIVATE, 3,0777);
+			if(semid<0)
+			{
+				printf("create semaphore failure \n");
+				return -1;
+			}
+			printf("create semaphore success: %d", semid);
+			system("ipcs -s");
+		//初始化信号灯
+			semctl          ==了解相关参数,可以通过man查看
+			加入联合体的定义，semctl的参数
+			定义结构体队形 semop的参数
+			struct sembuf mysembuf;
+			union semun mysemun;
+			mysemun.val = 0;
+			semctl(semid, 0, SETVAL, mysemun);  ==>可以删除，可以初始化信号灯
+			
+			semop           ===>可以实现P v操作  实现等待和唤醒
+			mysembuf.sem_num = 0;
+			mysembuf.sem_flag = 0;
+			
+			
+			mysembuf .sem_op = -1;    //实现等待   p
+			semop(semid, &mysembuf,1);
+			
+			mysembuf .sem_op = 1;
+			semop(semid, &mysembuf,1);  //实现唤醒  v
+			
+	无亲缘关系的进程间通信：
+		server.c
+			int semid; 
+			struct sembuf mysembuf;
+			union semun mysemun;
+			
+			int key;
+			key = ftok("./a.c", a);
+			if(key <0)
+			{
+				return -1;
+			}
+			semid = semget(IPC_PRIVATE, 3,IIPC_CREAT|0777);//IPC_EXCL
+			if(semid<0)
+			{
+				printf("create semaphore failure \n");
+				return -2;
+			}
+			system("ipcs -s");
+		这里只需要一个初始化，让客户端先运行客户端先初始化	
+			//mysemun.val = 0;
+			//semctl(semid, 0, SETVAL, mysemun); 
+			mysembuf.sem_num = 0;
+			mysembuf.sem_flag = 0;
+			
+			for(int i=0;i<10;i++)
+			{
+				usleep(100);
+			}
+			//v操作
+			mysembuf .sem_op = 1;
+			semop(semid, &mysembuf,1);
+			
+		client.c
+			int semid; 
+			struct sembuf mysembuf;
+			union semun mysemun;
+		//只需要一个初始化，这里就不需要初始化	
+			int key;
+			key = ftok("./a.c", a);
+			if(key <0)
+			{
+				return -1;
+			}
+			semid = semget(IPC_PRIVATE, 3,IIPC_CREAT|0777);//IPC_EXCL
+			if(semid<0)
+			{
+				printf("create semaphore failure \n");
+				return -2;
+			}
+			system("ipcs -s");
+			
+			mysemun.val = 0;
+			semctl(semid, 0, SETVAL, mysemun); 
+			mysembuf.sem_num = 0;
+			mysembuf.sem_flag = 0;
+			//让他后运行  p wait等待
+			mysembuf .sem_op = -1;
+			semop(semid, &mysembuf,1);
+			
+			for(int i=0;i<10;i++)
+			{
+				usleep(100);
+			}
+			while(1);
 
 
 
