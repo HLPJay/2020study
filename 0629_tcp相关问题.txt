@@ -1,0 +1,133 @@
+请理解：
+  1：三次握手，四次挥手
+  2：十一种状态
+  3：tcp如何保证顺序传
+  4：如何设置tcp发多少包合理？   慢启动 拥塞控制   滑动窗口   
+  5：延时ack的超时时间是怎么决定的》
+  6：tcp的协议头，
+  7：相关函数及函数参数解析
+  8：整理相关的图   三次握手，四次挥手以及11种状态
+
+
+
+徒手实现一个协议栈：
+	1：不能通过ping命令 --》ip    icmp协议没有实现
+	2：过一段时间，send命令无效   arp协议没有实现
+	
+那么，徒手实现一个协议栈，要我们实现对应的协议：
+	1：arp协议  --》arp   （命令,应用层）
+	2：icmp协议 --》ping （命令）
+	3：tcp
+	
+	
+如何实现tcp：
+	1：协议头
+	2：三次握手/四次挥手，11状态迁移
+	3：tcp的顺序，如何保证有序？ ==》延迟ACK/滑动窗口
+	4：定时器，rtt，慢启动与拥塞控制
+	5：tcp posix send/recv接口   epoll如何实现的
+
+//tcp的三次握手
+//服务器如何保存客户端的握手信息==》第一次握手  连接队列 （半连接队列，syn队列）
+//                                  第二次握手   服务器发给客户端   ack +seq
+//                                  服务器第三次收到 全连接队列，accept队列 ==》判断上面队列有没有，有则拿下来 （节点加入） 
+//每个队列的节点，对应一个tcp生命周期  ----》tcb tcb控制块 
+
+accept函数： accept的返回是，从全连接队列里取出一个节点，并为他分配fd。 ==》（如何分配的？）
+
+tcp是一个状态：  ==》需要一个状态迁移图    11个
+
+三次握手，涉及到的状态： 5个
+	服务器处于   listen状态
+	listen 之前 客户端都是closed状态
+	客户端发送syn包   客户端处于SYN_SENT状态
+	服务器listen到响应时     服务器处于 SYN_RECD状态
+	客户端接收到回应后    客户端处于 established状态
+						  服务器也处于established状态
+						  
+						  
+						  
+半双工，全双工，状态，
+listen(fd, backlog) backlog是什么意思？    半连接队列和全连接队列数据的总长度 
+			accept队列常常是空的？
+泛洪攻击？
+	如果最后一步，客户端不给服务器恢复最后一步消息==》半连接队列满了，没法接受请求
+	
+四次挥手： ==》不区分客户端和服务器，只有一端对应一端   主动方和被动方 调用close
+	
+	1：一端调用close   fin置1，可能和其他数据一起带过去。 ==》关闭了这端发给对端通道
+	2：另外一端        回ack
+	3：另外一端调用close  fin置1，
+	4： 				回ack
+	
+	tcp是双向的，
+	第二次和第三次挥手可以合并在一起==》和延迟ack有关系，装备发ack时，调用了close，两个包一起发了
+四次挥手时的状态？ 	
+	两端都处于established状态
+	Peer1调用了close主动发送后 Peer1 处于 fin_wait_1状态
+	Peer2接收到fin后，到Peer2调用close之前   CLOSE_WAIT状态
+	Peer1接收到对端ack后   fin_wait_2状态
+	Peer2发送fin后等待ack回应  处于LAST_ACT状态
+	Peer1接收到Peer2发送的fin状态后    Peer1处于 time_wait状态
+	
+	CLOSE_wait 关闭异常，没有正常关闭
+	time_wait  防止最后一个ack没有收到，保证ack发送成功 LAST_ack没收到会发送
+
+CLOSING状态：
+	中间ack和被动的fin发送有三种情况
+		1：ack先   fin后  FIN_WAIT2
+		2：fin先   ack后   CLOSING状态：
+		3：ack+fin同时发送   --》time_wait状态
+	
+tcp的状态保存在tcb中
+
+tcp是如何保证顺序的？ ==》TCP流式套接字
+	无法保证有序，是因为路由选择的
+	每到一个包，重置定时器，如果有超时，则开始判断，回复一个确认消息，已经收到的最大+1，对端开始重传
+
+如何决定tcp发包的大小？发多少包？   ==》慢启动与拥塞控制（每次发送多少包）
+	拥塞控制门限值：默认16  --》增长到这个值，会变为超过会+1
+第一次发1包，第二次发2包，第三次发4包	
+	先指数增长（慢启动），到默认值拥塞控制门限值（后面开始拥塞控制），+1，然后增长到一定程度（带宽限制，延迟等），砍一般然后+1去测
+	
+	慢启动计算出来的值 ===》滑动窗口窗口大小，==》这个值是动态的，一只在改变（慢启动计算，在+1）
+发送端：由慢启动   计算的  已经发送的   允许发送的（放在网络里的，就是滑动窗口）   不允许发送
+拥塞控制门限值：默认16	
+	慢启动 发包 1 2 4 8 16 17 。。。
+	
+延时ack 定时器的时间怎么设置？
+	从三次握手开始，记录发送时间rrt值   消抖
+		rtt = 0.9 *oldrtt + 0.1* newrtt;   //rtt一次往返的时间  发送后接受到 防止某一次意外原因时间长
+
+思考：状态对对端的影响
+	  如果没有收到对端ack的消息，定时器+重传
+	  tcp是可靠，流式传输，为什么还会出现udp可靠传输？ 
+		udp用于两种场景：
+			1：下载     tcp有拥塞控制，这里不用，一次性发
+			2：udp的实时性 如游戏。  tcp有延迟ack（200ms）  （延迟ack也是增加了tcp的传输效率）
+			
+			
+struct tcphdr{
+	unsigned short dport;
+	unsigned short sport;
+	//三次握手中的seq ==>随机产生  关键位置1，然后有数据
+	
+	unsigned int seqnum;
+	unsigned int acknum;
+	
+	unsigned char hdrlen:4,
+				  resv:4;
+	unsigned char cwr:1,
+				  ece:1,
+				  urg:1,
+				  ack:1,
+				  psh:1,
+				  rst:1,
+				  syn:1,
+				  fin:1;
+	unsigned short wsize; //窗口大小
+	unsigned short tcpcheck;
+	
+	unsigned short urg_pointer;
+	unsigned char option[0]; //可选其他
+}
