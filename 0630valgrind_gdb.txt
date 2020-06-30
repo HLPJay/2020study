@@ -1,0 +1,126 @@
+log4cxx:  https://www.yuque.com/docs/share/14a564d2-caf0-45f6-98f7-272239bdc867?# 
+密码：xufu
+
+http://fossies.org/linux/misc/  (各种开源包下载)   这个网站可以各种开源包下载。。。
+1：valgrind的安装
+	wget https://fossies.org/linux/misc/valgrind-3.16.1.tar.bz2
+	tar -jxvf valgrind-3.16.1.tar.bz2
+	sudo make
+	sudo make install
+2：编译的时候带 -g 与 -o0（优化级别为0）
+3: 练习：用valgrind 测试有问题的代码
+		 用valgrind记录到文件中
+4：内存覆盖能检测到一部分。
+5：valgrind的内部实现原理？
+
+
+gdb
+1：用gdb调试，打断点，比ide方便
+	==》nginx或者redis的源码学习比较方便
+2：编译的时候加 -g ==>保留调试符号
+3：gdb ./hello_server
+	b main
+	list
+	bt
+4:strip 去掉调试符号
+5：启动gdb的三种方式
+	gdb  ./可执行程序
+	sudo gdb attach 进程id
+		查看nginx的调用栈 f 和l
+		attach会打断进程的运行
+	gdb 可执行文件  core文件
+	
+	Ctrl+D 或者q退出
+6：detach   和continue   运行和暂停
+	detach 让gdb和执行的程序分离，没有影响了
+	如果continue后直接退出，会自动detch
+	用redis代码客户端+服务端测试 continue和detach
+
+7：core文件   
+ubuntu@VM-0-10-ubuntu:~/code/valgrind/gdb$ ulimit -a
+core file size          (blocks, -c) 0   ==》默认是不生成core文件的
+需要修改配置一些参数：
+	ulimit --c unlimited ===>可以可生成core
+						===》可以设置生成dump的目录
+	
+	用core_dump.c验证生成core文件以及gdb测试
+9：梳理gdb常用的使用命令 
+	r c n s u fi return j p bt f  thread b tb del enable
+10:使用redis对gdb进行测试，并且观察redis的代码
+	编译后直接用src下的二进制文件测试
+	run
+	    ==》用客户端测试连接
+	下断点测试 
+	b anet.c:455
+	run
+	info b ==>查看断点
+	c   ==》停到断点
+	直接打行号，在当前文件
+	l 查看代码
+	b设置断点后  c运行起来
+	b ae_epoll.c:112  看epoll_wait什么时候调用
+	info breakpoints
+	disable 5
+	c
+	
+	bt  ==>breaktrace
+	disable  1 //禁用断点。。。
+	enable  1
+	list的向前向后以及行数显示
+	print 和ptype
+	p可以显示也可以修改值
+	p打印结构体里的所有值 
+	
+	ptype 打印定义
+	   ===》与print相关的一些设置   set print pretty on
+	   
+	info threads   //info可以查看很多信息   thread  断点等。。
+	thread id
+		set scheduler-locking on ==>锁在这个线程，查看这个线程的栈
+		set scheduler-locking off ==>不锁  会切换出去
+	bt
+	return ===》结束当前运行函数 ，直接立即退出
+	finish  ==》正常执行退出该函数 --》可以一层层退出，查看上次调用
+
+	info args  查看当前所在函数参数
+	p *eventloop
+	n  ==》next  单步 跳过函数
+	s   ==》step  ==》进入到函数
+	
+	u 114  ==》unit   运行到行数停止
+	jump 行数 --》一般测试用   直接指定分支去执行  （如有些不运行的分治，直接打出来）
+	set args ../server.conf ==>设置参数
+	show args
+	
+	tb main ==>临时一次断点
+	
+	display 
+	
+	多进程也可以通过fork后 attach去查看调用栈
+父子进程测试	
+	b main
+	set listsize 100
+	c
+	b 22 ==>在子进程设置一个断点
+	info b
+	r  ==>默认是父进程，没有在断点停下
+	
+	show follow-fork mode
+	set follow-fork child ==>设置子进程，则可以在子进程流程断点处停下
+	
+	
+	
+	
+11：如果网络断开，gdb还在后台==》重新启动观察问题
+	r后再r   询问你要不要重新启动
+	break  设置断点   三种方式（C++的要加类名）
+12：如何学源码：
+	1：代码跑起来
+	2：分析代码的功能
+	3：分析代码的逻辑++。函数调用栈
+	
+13：GDB TUI调试
+	
+练习：valgrind运行测试代码
+	 gdb的三种启动方式
+	 coredump生成的设置+名称+目录
