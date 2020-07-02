@@ -1,0 +1,119 @@
+即时通讯基础版本部署20200326.mht
+按照上面文档，搭建该项目 http://gitlab.0voice.com/0voice/0voice_im
+
+ls -tlR --full-time
+ls -tlRh --full-time
+-h一般是help或者   如   文件的大小显示成M
+
+wc filename  统计文件字符个数 行数等，也可以多个文件统计总共
+
+uptime   ==>机器重启运行时间，正在登陆用户数，负载均衡的一些数 （单核 3.0以上负载有点大，5.0不堪重用）
+ ==》用音视频的转码 265测试，会发现负载均衡在升高
+ ==》多核的时候要乘以核数
+ 
+ 查看cpu信息 ：  cat /proc/cpuinfo
+ 直接获取 CPU核数： grep "model name" /proc/cpuinfo
+         grep "model name" /proc/cpuinfo |wc -l
+		 
+ulimit 
+curl http ==》测试对应的http
+scp  ==>scp -r //拷贝整个目录
+	rsync  也可以实现拷贝
+dos2unix/unix2dos
+	find . -type f -exec dos2unix {} \;  ==>整个目录的转换
+		观察相关字符   ^M是什么字符，是\r
+sed 
+awk
+ps -elf 或者ps -ef
+	实现客户后台监控   ==》检测当前进程
+	sudo ps -ef |grep nginx 
+	sudo ps -ef |grep nginx| grep -v grep  ==>反转  不要了自己grep这行
+			==》检测是否有该进程
+	sudo ps -ef |grep nginx| grep -v grep |wc -l  ==>检测有多少个进程
+
+crontab ==>可以执行定时任务
+	可以定时执行脚本 
+	检测脚本是否有相同的在运行，否则运行
+top  ==》sudo top -hp pid  ==>查看top中占用较大的具体信息
+pidstat -urd -p pid
+	==>查看cpu信息 内存使用等
+-h一般是人性可读
+free -h    ==》free是完全没用的     used是用的   buff/cache 
+	buffer cache 的区别 ： 
+		buffer 攒数据，批量写入（硬盘数据的写入）               ==》缓写
+		cache：低速设备到高速设备的缓存（比如，从硬盘里读数据） ==》 预读
+				==》比如读100字节，（实际可能读取4K到cache中，下次再读取100字节，直接从cache中）
+					
+
+cpu监控
+	vmstat
+	mpstat 可以查看每个处理器的统计
+监控I/O磁盘
+	iostat
+	swapon   
+		swap交换区，物理内存不够用时，可以把一些数据放到硬盘中，
+		下次访问到但是不在物理内存时，从硬盘重新加载到内存中
+			==》虚拟内存，操作系统的知识点  
+				缺页？第一次访问没有在物理内存，从硬盘加载，与swap从硬盘加载是有区别的
+	
+查看具体目录的大小
+	du -lh --max-depth=1    ===>统计子目录的大小  控制目录层级
+网络命令：
+	ifconfig 
+	换局域网 把网卡重启一下  
+		关闭，开启网卡用ifconfig   ifconfig eth0 down/up
+	也可以改固定ip
+	ping
+	
+	
+	telnet     ===》？？？连redis, zookeeper 用telnet 测试？
+	nc ==》可以验证服务器端口有没有开放
+	nc -l 9999    ===>监听这个端口
+	nc -vw  2 192.168.0.126 9999   ===》防火墙拦截
+			超时秒数2s
+	上线服务器 可以用nc检测端口是否对外开放
+		云服务器服务商，云服务器商在在外层会设置防火墙
+		涉及安全策略
+	控制台 --》安全组 安全规则
+	编辑规则在上面加一个端口
+	
+	mtr连通性测试，也可以检测丢包率，
+	sudo tc qdisc add dev eth0 root netem loss 10%
+		==>模拟丢包,然后用mtr观察
+	测试云服务器选点？  声网做音视频通话，节点选取要测试
+	
+	nslookup   ==》DNS解析域名工具
+		nslookup www.0voice.com
+	traceroute ==》测试数据包的路径，经过的节点
+		测试路径到印度的？用专线比较快
+	sar -n  DEV 1 1
+		测试网络带宽， ==》查看带宽，有时
+		自己搞得CDN，并发稍微高点，图片拉不下来（图片占带宽） ==》云服务器有限速
+	
+	海外业务，可以选择香港或者新加坡的服务器
+	netstat
+		测试网络连接，端口信息
+		netstat -nap |grep pid ==》根据进程查，也可以根据端口等过滤
+	iptraf 网络监控 (带界面)，可以看到要抓的端口包的统计等
+	tcpdump  抓包
+		sudo tcpdump -D 查看可以抓那些的
+		可以测网卡速度吗？ 待理解
+		回环测试？ tcpdump -i lo   与telnet 127.0.0.1 80
+		-i 选择网卡  -c  抓几个包退出 --time-stamp-precision=nanp 微秒  时间精度
+		tcpdump -i any
+		tcpdump -i eth0 -c 10 host www.0voice.com and port 80
+			相关参数及与或的练习
+	nmap 扫描主机上的端口
+	ethtool 可以查看网卡的配置 ==》sudo ethtool eth0 云服务器上看不到信息
+	lsof  ==>查看进程打开的文件查看程序打开的文件
+		==》查看某个文件被谁打开
+	
+	pstack pid   ==>可以查看进程调用栈    
+		===》可以定位一些代码 比如死循环 小程序死循环的验证
+	strace -p pid==》用来跟踪，会打印 -c会打印统计信息
+	tail实时监控日志 通过 perl可以加颜色
+	multitail ===》开多个视窗使用
+	pmap  ==>查看地址空间  内存状态
+	w -h
+	
+	
