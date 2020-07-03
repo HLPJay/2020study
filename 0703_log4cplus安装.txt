@@ -1,0 +1,34 @@
+Log4cplu使用指南：
+	1：log4cplus具有线程安全、灵活、以及多粒度控制的特点。
+				将日志输出到屏幕、文件、NT event log、甚至是远程服务器；
+				通过指定策略对日志进行定期备份等等。
+	2：下载及编译：
+		git clone https://github.com/log4cplus/log4cplus.git
+		cd log4cplus/
+		git tag
+		git checkout REL_2_0_5
+		git branch
+ 
+		make
+		make check
+		sudo make install
+	相关报错：
+	问题一：automake版本不匹配	
+		/home/ubuntu/install_code/log4cplus/log4cplus/missing: line 81: aclocal-1.16: command not found
+	解决：	
+		wget http://ftp.gnu.org/gnu/automake/automake-1.16.tar.gz
+		tar -zxvf automake-1.16.tar.gz
+		cd automake-1.16/
+		sh configure --prefix /usr/local -enable-threads=no     //指定安装目录 /usr/local目录下。 默认多线程版本，设置单线程
+		sudo make install
+	问题二：发现pthreadpool.h头文件无法找到
+		查看相关的makefile，发现pthreadpool目录及该目录为空
+		去源码库查看及获取到对应的文件
+	3：运行相关的测试代码：
+		1：线程池的测试
+		2: log4cplus测试代码的测试：
+			
+			
+延伸：
+	ldconfig  命令的用途,主要是在默认搜寻目录(/lib和/usr/lib)以及动态库配置文件/etc/ld.so.conf内所列的目录下,
+		搜索出可共享的动态 链接库
