@@ -117,4 +117,20 @@ nginx的学习及其操作：
 ./0621_nginx_cgi: error while loading shared libraries: libfcgi.so.0: cannot open shared object file: No such file or directory
 		ubuntu@VM-0-10-ubuntu:/usr/local$ cd lib/
 		ubuntu@VM-0-10-ubuntu:/usr/local/lib$ sudo cp libfcgi* /lib/
-		
+	
+	
+	
+	nginx只能处理静态请求
+动态请求，jsp,php，fastcgi
+fastcgi是如何处理动态请求的？
+	cgi：common Gateway interface 公共网关接口
+
+用户浏览器  把数据交给nginx   nginx把数据交给cgi程序（每个请求fork一个cgi程序来处理http请求）
+            《---------
+			
+fastcgi是cgi的扩展： 将cgi解释器保持内存中进行管理调度。
+	启动一个master加载配置后，有多个worker
+	
+客户端  nginx  fastcgi服务器
+          nginx中要加载一个fastcgi模块（nginx_http_fastcgi_module），才能与fastcgi通信
+web服务器启动后，初始化一个fastcgi管理器，很多个fastcgi管理器
