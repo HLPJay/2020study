@@ -28,7 +28,17 @@ void Trim(std::string &str)
     str.erase(0,str.find_first_not_of("\t"));
     str.erase(str.find_last_not_of(" ") + 1);
     str.erase(str.find_last_not_of("\t") + 1);
+	
 }
+/*
+void Config::Trim( string& inout_s )
+{
+    // Remove leading and trailing whitespace
+    static const char whitespace[] = " \n\t\v\r\f";
+    inout_s.erase( 0, inout_s.find_first_not_of(whitespace) );
+    inout_s.erase( inout_s.find_last_not_of(whitespace) + 1U );
+}
+*/
 
 /****************************************
 按行对文件内部数据进行解析：
