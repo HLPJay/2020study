@@ -1,0 +1,31 @@
+0707日学习：
+	1：使用C++实现简单的写入excel ==》csv
+	2：om项目布置
+	3：log4Cplus测试
+	4：并发实现
+	
+敌方阵营已攻克，开始揭竿收枪炮。
+CMAKE：
+	ZLToolKit.git ==》C++11实现的
+makefile：
+	NtyCo.git
+根据项目学习makefile和cmake：	
+	https://github.com/xiongziliang/ZLToolKit.git
+	https://github.com/wangbojing/NtyCo.git
+
+makefile不止编译，可以输出
+	1：targets 默认第一个，不是all
+		要注意tab的使用，空格和不加tab都会有问题
+	2：
+  
+  
+  
+  一个很多个很多个脚丫子的，一个圈上有一个眼睛，一直围着一个圈圈在努力奔跑。
+圈圈上写着各种理想和要奋斗的事
+然后镜头转变，慢慢延伸，延伸出窗外，慢慢扩大到整个城市。
+
+
+睡/不醒
+知道抽烟不好，所以不去抽烟
+知道世俗险恶，所以不愿入世
+孤芳自赏，孤冷自傲
