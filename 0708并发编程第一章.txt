@@ -1,0 +1,50 @@
+我想，是时候开始钻研代码了！
+	1：发布订阅，观察者，工厂，单例
+	2：并发的代码
+	3：Makefile的梳理
+	
+0708学习知识点： **********
+	1：可调用对象Callable的整理。
+		https://blog.csdn.net/qq_43145072/article/details/103749956
+		https://www.cnblogs.com/fuzhe1989/p/7763636.html
+	2：std::bind的学习，std::ref
+	3: std::unique_ptr 移动语义
+	4：std::accumulate 实现并行版本，核数和线程数。。。  怎么根据内核个数定义线程个数？思考？std::thread::hardware_concurrency()
+	5: std::mem_fn 和foreach配合调用函数实体
+		std::for_each(threads.begin(),threads.end(),std::mem_fn(&std::thread::join));
+	6：总结std::thread相关函数
+	
+并发的代码整理： ==》直接分析所有课本源码，对源码接口进行分析整理
+1：std::thread和线程可调用对象
+	1：	#include <thread>
+		std::thread t(callfunc);对象构造其他线程
+		t.join();等待线程调用栈，一旦调用，此线程不在可连接，joinable返回false
+	2：管理线程：
+		Callable： 可调用对象(Callable Objects)
+			==》基于范围的模板函数时（如 sort()、all_of()、find_if() 等），常常需要我们传入一个可调用对象
+			==》在处理一些回调函数、触发函数时，也常常会使用可调用对象
+			==》普通函数，函数指针，仿函数(重载了operator()运算符的类对象)，匿名函数(Lambda表达式)，std::function
+			
+				1.std::function：    最common的方式，一般会配合std::bind使用。
+				2.function pointer： 最C的方式，但没办法实现有状态的callable object。
+				3.function object：  就是重载了operator()的类，C++98的STL中经常用。
+				4.lambda expression：不会污染namespace，一般来说编译器内部会实现为一个匿名的function object。
+
+			从原理上性能最好的应该是3和4，其次是2，最差的是std::function。
+
+		std::thread与任何可调用对象(callable)一起工作===》operator()的类对象，函数指针，匿名函数
+		
+		2.1:  测试operator()的struct或者class调用
+				==》注意用()和{}明确std::thread声明的变量避免其解释为函数声明
+				==》t.detach()  不等待线程执行结束，分离线程，后台运行 ===》守护线程，长时间运行
+						调用完成后，不在于实际线程关联，不能够被加入，joinable返回false
+		2.2： 通过类管理std::thread，禁止拷贝构造和赋值构造
+		2.3： 线程函数传递参数 ==》默认赋值  string类型用char* 传递地址 ===》可能导致悬浮指针
+							   ==》不识别引用
+							   ==》传递指针
+							   ==》参数只能被移动，不能被复制  ==》std::unique_ptr
+		2.4：std::thread 实例是可移动的，不可复制的
+		2.5：转移线程所有权。   构造转移，std::move()转移线程所有权。
+		2.6：std::accumulate 实现并行版本，核数和线程数。。。
+		2.7：线程标识   用std::thread::id来标识      通过get_id()获取线程id     std::this_thread::get_id()获取自己的id
+		
