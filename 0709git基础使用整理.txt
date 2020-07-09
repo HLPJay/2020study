@@ -1,0 +1,65 @@
+思考一下，后期提升计划：
+	1：每天看一小时源码
+	2：不管知识点还是leetcode，每天处理一个小问题
+
+相关小的知识点：
+	1：可调用对象Callable的整理。
+		https://blog.csdn.net/qq_43145072/article/details/103749956
+		https://www.cnblogs.com/fuzhe1989/p/7763636.html
+	2：std::bind的学习，std::ref
+	3: std::unique_ptr 移动语义
+	4：std::accumulate 实现并行版本，核数和线程数。。。  怎么根据内核个数定义线程个数？思考？std::thread::hardware_concurrency()
+	5: std::mem_fn 和foreach配合调用函数实体
+		std::for_each(threads.begin(),threads.end(),std::mem_fn(&std::thread::join));
+	6：总结std::thread相关函数
+
+做了几个LeetCode题：	
+	熟悉了一个sort的用法，
+	熟悉了一个字符串切割和字符串比较的接口
+	熟悉了vector拷贝的用法
+	根据字典分析字符串被切割的单词数目（递归，类似KMP的算法）  暂时不考虑前缀有重复的
+	保存最长匹配数，然后回文到最前面
+  
+ 
+用小乌龟，SourceTree工具进行管理
+	1: git init --bare ===>裸仓库，远端看到的不是我们的源文件，防止被攻击
+			==》防止删库跑路
+	2：git clone 从远端服务器直接克隆    ubuntu@ip：/路径、
+	3： git status
+		git add
+		git commit -m "描述"
+		git push origin master
+	
+	4:设置ssh免密登录 ==》裸仓库
+		ssh-keygen -t rsa
+		id_rsa.pub中的内容放在远程仓库
+		放在裸仓库所在服务器下.ssh目录下的authorized_keys
+	5：服务器裸仓库是没有文件的
+	6：未跟踪，文件已入库未修改，已修改，暂存区
+	7: 分支：
+		git branch
+		git fetch ==>从远端拉取更新 ，命令行很少使用
+		用.gitignore   过滤提交
+		git push origin develop
+		git merge     ===>本地仓库   合并分支
+	8：ctrl+r 在命令行模式可以实现搜索以前输入过的命令
+	9：有差异 先要 git pull 
+			可能生成冲突 ===》研究如何处理冲突
+	10：开发策略：
+		master是版本    develop是主管模块
+		根据模块进行拆分建立多个分支去测试
+	
+	注意可编译可运行   git commit xxx -m "描述"
+		多次commit  不push
+		
+		git rebase -i 对之前commit进行整理
+	
+	git submodule ==》子模块，使用第三方库
+		git submodule  url 目录
+		git submodule  init --update ==>从远端拉取
+		要修改第三方库，先fork出来，然后修改成自己的模块，然后提交
+		提交。。。 add submodule
+		
+	回退  git reset
+		  git rebase 
+		
