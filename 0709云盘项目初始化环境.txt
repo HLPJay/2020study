@@ -1,0 +1,113 @@
+云盘项目：
+1： 42.194.195.184    80
+2：用qt开发的客户端，生成exe
+3：fastcgi,调用程序，存储到我们的分布式文件系统
+			==》存到磁盘，返回文件信息
+			==》文件信息保存到mysql
+4：项目介绍，环境搭建
+	1：相关接口怎么写，如 给前端一个文档让他们开发
+	2：使用的16.04 server版本的服务器
+			环境安装包
+	3：http协议， json，redis mysql  nginx  md5 base64  fastdfs
+		功能测试：postman工具
+		性能测试：wrk
+	安装  fastdfs  尽量用高版本
+		tar -zxvf libfastcommon-
+		sudo ./make.sh
+		sudo ./make.sh install
+		查看动态库  /usr/lib64/ 
+		libfastcommon.so
+		用软连接实现 /usr/lib下
+		
+		tar -zxvf fastdfs-6.06-
+		sudo ./make.sh
+		sudo ./makesh install
+		/usr/bin目录下会生成fdfs*一些文件
+		/etc/fdfs/下生成几个配置文件
+		把原来的配置文件备份一份
+		client   tracker   storage
+		tracker.conf 配置文件加ip  代表tracker安装的服务器
+			基础路径  base_path
+		storage.conf   配置ip   group
+			端口，base路径，
+			store_path0, store_path1...
+				==》多个存储节点用 store_path_count对应个数
+			tracker_server ===>如果tracker配置了集群，可以有多个
+		client.conf  base_path,tracker_server
+		创建对应的路径
+	4:启动 进入安装目录 fastdfs 
+		sudo ./tracker/fdfs_tracked /etc/fdfs/tracker.conf
+		sudo ./tracker/fdfs_storaged /etc/fdfs/storage.conf
+		
+		
+		测试客户端:在/usr/bin目录下
+		sudo ./fdfs_monitor /etc/fdfs/client.conf
+	5：需要安装 spawn-fcgi-1.6.4     ==》nginx已经安装过
+		 tar -zxvf spawn-fcgi-1.6.4
+		 sudo ./configure
+		 sudo make
+		 sudo make install
+		安装fcgi ===》解压安装
+		
+		测试代码测试fcgi
+			spawn相当于组件 管理程序   配置ip和端口
+			fcgi相当于接口
+	==>找不到fcgi的接口  需要软连接
+		==》在nginx中配置cgi接口测试
+		==》example下echo.c回显测试 nginx中配置多个cgi 显示相关信息
+	思考：libcurl是啥？
+		fastcgi更轻量级，理解后取搞hdfs
+	6：fast-nginx-module 模块
+		先解压 tar -zxvf fast-nginx-module。。。
+		cd src
+		进入nginx的源码安装路径 
+		sudo ./configure --add-module=fast-nginx-module/src的路径
+		观察加入成功：
+		进入mginx的objs/Makefile文件中增加
+			-I /usr/include/fastdfs \
+			-I /usr/include/fastcommon \
+		sudo make
+		sudo make install
+		拷贝配置文件到 mod_fastdfs.conf /etc/fdfs   -rf
+		修改配置文件
+			base_path  与storage.conf一致
+			tracker_server 一致
+			端口，group一致
+			url_have_group_name 改为true
+			store_path_count 存储路径个数
+			store_path0 和storage一样
+			
+			storage路径配置软连接
+			配置nginx--》重新启动验证
+			
+			报错貌似是storage重新启动，安装目录里启动
+			
+			通过进程上传文件测试  fdfs_upload_file /etc/fdfs/client.conf  文件名
+			通过nginx访问上传的文件
+			
+			
+			如果有报错，注意查看nginx的日志，
+			拷贝两个文件到/etc/fdfs下
+				nginx-1.16-1/conf/mime.types 
+				fastdfs-6.06/conf/http.conf
+			重启nginx，storage，
+			有的文件则直接下载，如果图片则显示，有些文件显示
+	7：配置云盘服务端		
+		拷贝server代码，0voice-cloud-disk
+		修改配置文件 conf/cfg.json  ，线上ip和端口号
+		导入mysql的数据库，数据库脚本 
+			进入mysql
+			source /home/.../0voice_cloud_disk.sql
+			修改相关权限 .sh
+			chmod a+x 
+			
+		配置fastcgi，拷贝到nginx中，重启nginx
+		项目目录里  make clean
+					sudo ldconfig
+					sudo make
+					sudo ./start.sh
+					
+		没有装hiredis
+		
+		配置ip和端口后进行登录
+		图片没显示是因为需要拷贝到项目中？ win打开后显示图片问题
