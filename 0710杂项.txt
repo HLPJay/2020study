@@ -1,0 +1,34 @@
+
+思考一下，后期提升计划：
+	1：每天看一小时源码
+	2：不管知识点还是leetcode，每天处理一个小问题
+
+相关小的知识点：
+	1：可调用对象Callable的整理。
+		https://blog.csdn.net/qq_43145072/article/details/103749956
+		https://www.cnblogs.com/fuzhe1989/p/7763636.html
+	2：std::bind的学习，std::ref
+	3: std::unique_ptr 移动语义
+	4：std::accumulate 实现并行版本，核数和线程数。。。  怎么根据内核个数定义线程个数？思考？std::thread::hardware_concurrency()
+	5: std::mem_fn 和foreach配合调用函数实体
+		std::for_each(threads.begin(),threads.end(),std::mem_fn(&std::thread::join));
+	6：总结std::thread相关函数
+
+做了几个LeetCode题：	
+	熟悉了一个sort的用法，
+	熟悉了一个字符串切割和字符串比较的接口
+	熟悉了vector拷贝的用法
+	根据字典分析字符串被切割的单词数目（递归，类似KMP的算法）  暂时不考虑前缀有重复的
+	保存最长匹配数，然后回文到最前面
+	求整数反转，要注意整数溢出（应该测试   整数最大值及溢出情况）
+	求很多个字符串的从头开始的最大公共子串，可以先排序，然后最先和最后的求公共就好
+	vector可以在中间插入，stack栈只能在支持一端操作(push,pop)
+	移除vector元素   可以用iterator  也可以把要移除的元素移动到最后用pop_stack
+	find_first_of string的这个函数是查找其中一个元素在字符串首次出现的位置
+	
+	
+	
+	递归  动态规划
+	依次构造， 下次数字与上次有关		
+				最大子数组 动态规划 分治 回溯 跳表 递归
+			实现sqrt  用二分查找判断的方法和 exp(0.5 * log(x));
