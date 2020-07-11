@@ -1,0 +1,79 @@
+1:redis配置相关配置
+	pidfile  ===>就一个进程的id
+2：写了一个http url地址，是谁帮我们做的相关的头等。。。
+	是浏览器帮我们做的，收不到回复就是请求失败了
+3：nginx配置fast nginx module要注意版本问题
+4：为什么不适用ClusterFS分布式文件系统
+		fastDFS好用而已，可以用这个
+		fastDFs用C写的，轻量级
+5：FastDFS与hadoop和hdfs的比较
+6：一个group中storage 多个内存为1T ，1.5T  2T
+	goup的大小为1T，取存储节点最小存储大小
+	一个group其中一个存文件，然后通过binlog向其他节点进行同步
+		如果新增一个，binlog会将所有的传递过来
+	多个group之间不能互相访问
+		如果想要增加一个group对某个group进行扩容，tracker选择IP地址选节点
+		group的每个节点都会连接tracker ，tracker保存所以有存储节点的信息。  tracker也可以配置集群
+	fastdfs连接池？？？  要自己实现
+7：client上传，tracker告诉客户端一个可上传的storage ip，然后上传
+	storage写入磁盘，返回文件信息给客户端
+	client拿到信息后，保存到mysql
+		==》用户登录，要显示自己的文件，从mysql中读取，点击才会真正访问storage中的文件
+		
+	fastcgi实现所有的功能？？？ ===》思考一下
+	
+	通过测试代码实现上传
+	gcc fdfs_upload_file2.c -o test ==>参考文件内部，编译命令
+		windows和unix的编码问题
+			在工具用手动全部替换的方法
+			用命令的方法 ？     dos2unix
+	各种实现方案  管道，子线程等
+8： FastDFS和对象存储的区别
+	对象存储 oss：  ===》云服务商提供对象存储
+		1：收费，按存储磁盘大小/按流量收费
+		2：先得有账号， 创建/bucket、文件夹  不用自己搭建环境
+		
+	可以存储那些文件？
+	==》迁云难，内部用不了
+	
+	fastdfs 搭建环境，工程师维护，扩展
+	对象存储和hfs的区别？
+9：fastcgi， cgi
+	
+	什么叫做web服务器？==》能够处理http协议的就是web服务器
+	cgi的工作流程？  web服务器 fork一个cgi程序
+	fastcgi fork一个专门处理一类问题的fastcgi进程
+		spawn-fcgi进程管理器
+	一个location是一个进程?  fcgi的一个进程
+	
+	http协议 nginx将请求转给fastcgi 转给业务 ？php实现
+		nginx通过 http_fastcgi_module将请求转给fastcgi
+	fastcgi的协议？
+		Record（单元） nginx通过最小单元 Record发给fastcgi 是有一个typede
+	nginx发给fastcgi
+		第一个Record	首先  begin request
+		第二个Record    传递参数
+		第三个Record    http请求  stdin
+	fastcgi响应nginx：
+		1: stdout
+		2：ERR
+		3：end request
+	nginx和fastcgi通过tcp协议
+	
+	fastcgi的配置参数~ ==》看官网等资料
+	fast-cgi可以使用spawn-fcgi或者 php-fpm（php代码）来管理
+10：fastcgi和tomcat的区别
+	nginx转给tomcat用的http，用户可以直接连接tomcat，通过http，+端口
+		可以配置多个tomcat
+	nginx发给fastcgi用的fastcgi协议,nginx可以配置多个fastcgi进程
+	openresty  （lua）==》不适合做大型的，要部署多个，需要再部署openresty
+		不适合扩展
+	
+	使用fastcgi，使用C/C++
+	使用tomcat ，使用java语言
+	openresty    使用lua
+	
+	php不适合大型项目
+11:日志模块的使用： log模块源码
+12: upload
+	先要make clean
