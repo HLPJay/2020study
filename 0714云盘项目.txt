@@ -1,0 +1,11 @@
+视频是发展不起来的  因为中国运营商带宽扛不住
+
+1：redis密码先清理掉  如何设置redis密码
+2：把文件另存为ASIC码就可以看到文件中的不可见字符
+3：gcc fdfs_upload_file2.c -o test -I/usr/include/fastdfs -lfdfsclient -lfastcommon
+4: 界面访问nginx静态文件是乱码的内容 ==》需要在nginx.conf中配置 charset uft-8;
+5: FIdder监控工具  查看网络
+6：upload目录先ldconfig  再make  然后再用spawn启动cgi的程序
+7：echo  显示图片内容   二进制的
+8：配置nginx上传文件的大小实现上传视频
+9：上传  fdfs自带的上传，管道上传
