@@ -1,0 +1,34 @@
+/****************************
+注意数组越界,注意审题对 10^9 + 7 取模后返回。
+对含有01的字符中求1的子串个数  注意特别长的数字,int类型越界
+由于答案可能很大，请你将它对 10^9 + 7 取模后返回。
+****************************/
+class Solution {
+public:
+    int numSub(string s) {
+    	if(s.empty())
+    	{
+    		return 0;
+    	}
+    	long temp = 0;
+    	long res = 0;
+        int MAX =(int) pow(10,9) + 7;
+    	for(int i=0; i<s.size(); i++)
+    	{
+    		if(s[i] == '1')
+    		{
+    			temp++;
+    		}else
+    		{
+    			res = (res + temp*(temp+1)%MAX/2)%MAX;
+    			temp = 0;
+    		}
+    	}
+    	if(temp != 0)
+    	{
+    		res = (res + temp*(temp+1)/2%MAX)%MAX;
+    	}
+        
+    	return (int)res;
+    }
+};
