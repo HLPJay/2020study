@@ -1,0 +1,60 @@
+#include <iostream>     // std::cout
+#include <algorithm>    // std::sort
+#include <vector>  
+
+using namespace std;
+/********************************************
+计算一个数字内的数字能组成的二叉树的个数
+二叉树分为左树和右树, 
+n
+ 如果以n为跟节点的话  f(n)=f(0)*f(n-1)+f(1)*f(n-2)+...+f(n-1)*f(0);
+
+
+ 思考一下,对于n来说,左字数和右子树可能的乘机之和就是我们的结果.
+ 那么,动态规划则是:直接递归左子数的可能 *右边的可能之乘
+
+n=3 结果是5
+ 用递归的方案实现
+ 用动态规划的方案实现
+*********************************************/
+
+//递归的时候    调用函数不能=n   小心成死循环numTrees(2) 和numTrees(0)
+
+class Solution {
+public:
+    int numTrees(int n) {
+        if(n<=1)
+        {
+        	return 1;
+        }
+        std::vector<int> res(n+1, 0);
+        res[0] = res[1] = 1;
+        for(int i=2; i<=n; i++)
+        {
+        	for(int j=0; j<i; j++)
+        	{
+        		res[i] += res[j]*res[i-j-1];
+        	}
+        }
+        return res[n];
+    }
+};
+
+
+//递归的时候    调用函数不能=n   小心成死循环numTrees(2) 和numTrees(0)
+class Solution {
+public:
+    int numTrees(int n) {
+        //一直分解,左子数乘以右子数然后求和
+        if(n == 0 || n ==1)
+        {
+            return 1;
+        }
+        int res = 0;
+        for(int i=0; i<n; i++)
+        {
+            res += numTrees(i)*numTrees(n-i-1);
+        }
+        return res;
+    }
+};
