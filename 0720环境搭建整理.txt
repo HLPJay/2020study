@@ -1,0 +1,149 @@
+哪有什么岁月静好,无非是有人在负重前行;
+延伸:updatedb,  ldconfig,  locate命令的使用. update-alternatives软件版本的切换
+
+ubuntu上安装qt,gcc的更新版本,cmake的更新版本
+MRPT, CGAL
+
+1:安装qt总结:
+    去官网安装,选择archive版本/new_archive版本;
+    Developer release 版本是新功能测试版本;
+    修改下载的文件权限,然后执行可执行文件;
+
+2:升级对应的gcc版本,4.8版本以上
+	a: 添加相关的源,进行对应gcc版本的安装;
+	    sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+	    sudo apt-get update
+	    sudo apt-get upgrade
+	b: sudo apt-get install gcc-4.9 g++-4.9
+	c: 查看当前gcc,g++的版本: 发现版本未变更
+	    gcc --version
+	    g++ --version
+	d: 查看当前系统中, 已经安装的gcc/g++的版本
+	    sudo updatedb && sudo ldconfig
+	    locate gcc | grep -E "/usr/bin/gcc-[0-9]"
+        locate g++ | grep -E "/usr/bin/g\+\+-[0-9]"
+    e: 对新版本进行链接
+    	1:通过ln命令实现链接.
+		    cd /usr/bin
+		    sudo rm gcc
+		    sudo ln -s gcc-4.9 gcc
+		    sudo rm g++
+		    sudo ln -s g++-4.9 g++
+    	2:通过update-alternatives建立文件关联  ===>其实是设置默认优先级的,这里设置的是49
+    		sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 49 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 --slave /usr/bin/gcc-ar gcc-ar /usr/bin/gcc-ar-4.9 --slave /usr/bin/gcc-nm gcc-nm /usr/bin/gcc-nm-4.9 --slave /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-4.9
+    理解一下:
+    	sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 50
+
+附录:
+	新学到的命令:	
+		==>updatedb 在执行时它会遍历整个系统的目录树，并将所有的文件信息写入slocate/locate 数据库文件中。
+		==>ldconfig 动态连接库配置
+			默认搜寻/lilb和/usr/lib，以及配置文件/etc/ld.so.conf内所列的目录下的库文件
+		==>locate 只在/var/lib/slocate资料库中找,一般文件数据库在/var/lib/slocate/slocate.db中
+		sudo updatedb && sudo ldconfig
+	    locate gcc | grep -E "/usr/bin/gcc-[0-9]"
+	    locate g++ | grep -E "/usr/bin/g\+\+-[0-9]"
+
+	ldconfig是一个动态链接库管理命令，其目的为了让动态链接库为系统所共享。
+	ldconfig的主要用途：
+	默认搜寻/lilb和/usr/lib，以及配置文件/etc/ld.so.conf内所列的目录下的库文件。
+	搜索出可共享的动态链接库，库文件的格式为：lib***.so.**，进而创建出动态装入程序(ld.so)所需的连接和缓存文件。
+	缓存文件默认为/etc/ld.so.cache，该文件保存已排好序的动态链接库名字列表。
+	ldconfig通常在系统启动时运行，而当用户安装了一个新的动态链接库时，就需要手工运行这个命令。
+	使用:
+		往/lib和/usr/lib里面加东西,添加完后需要调用下ldconfig
+		添加的library不在/lib和/usr/lib里面的话，就一定要修改/etc/ld.so.conf文件;
+		往/etc/ld.so.conf文件追加library所在的路径，也需要重新调用下ldconfig命令
+		如果添加的library不在/lib或/usr/lib下，但是却没有权限操作写/etc/ld.so.conf文件,需要往export里写一个全局变量LD_LIBRARY_PATH
+
+	f: 在編譯MRPT1的时候,发现cmake的版本偏低,不匹配.
+		所以,需要重新安装cmake:
+		这里我先卸载删除系统自带的 cmake : sudo apt-get remove cmake
+			wget https://cmake.org/files/v3.9/cmake-3.9.2.tar.gz
+			tar -xvf cmake-3.9.2.tar.gz
+			cd cmake-3.9.2
+			./configure
+			sudo make && make install
+		==>无法执行,没有CMakeFile文件, 这里需要用到cmake先执行 
+			我这里使用的是先安装后,再删除cmake,以及sudo apt-get autoremove
+2:安装需要的一些依赖库
+	1:MRPT1.5.4 ==>其中make install有两个报错,应该不影响使用
+		make build
+		cd build
+		cmake ..
+		make -j4
+		sudo make install 
+	2:CGAL 4.9
+
+
+		cmake的时候遇到报错:Could NOT find GMP (missing: GMP_LIBRARIES GMP_INCLUDE_DIR)
+	解决方案:
+		sudo apt-get install m4 
+		从官网https://gmplib.org/下载GMP并安装
+		./configure --enable-cxx
+		make
+		make check
+		sudo make install
+
+		Could NOT find MPFR (missing: MPFR_LIBRARIES MPFR_INCLUDE_DIR)
+	解决方案:	
+		git clone https://github.com/qnzhou/PyMesh.git
+		cd PyMesh
+		git submodule update --init
+		cd $PYMESH_PATH/third_party
+		mkdir build
+		cd build
+		cmake …
+		make
+		make install
+	问题:发现cmake的版本过低...
+		
+
+排除掉课程培训相关字眼:
+當下需要緊急理解的內容:
+	1:ntyCO
+	2:ntyTCP
+	3:DLOG,DFS日誌模塊的實現方案
+		==>协程  ntyco
+	4:网关项目的协议栈封装,负责ping arp traceroute命令的移植
+		==>内核模块协议栈的梳理
+		==>ntytcp
+		==>netmap和DPDK
+	5:网盘项目跑起来, im项目梳理一下.
+	6:设计模式: 多线程下的单例模式,  工厂模式,  过滤器模式(协议栈解析,机器人硬件参数), 观察者模式
+	7:刷题
+	8:整理github文档,同步github与语雀的内容.
+	9:找老师要一下相关的面试题
+	10:redis的epoll事件reactor
+
+
+当下任务: 云盘项目布置起来.
+		UI界面需要的环境搭建起来		
+
+已经掌握的理论基础知识点：
+	1：十种排序，  KMP， 红黑树， b树，   布隆过滤器，    bitmap
+	2：mysql， redis， MongoDB， nginx （cgi，配置）==》未研究源码，其他都已知
+	3：线程池，内存池，锁，无锁队列
+	4：编解码  哈夫曼编解码  unicode和utf-8
+	5：json
+	6：select poll（ET， LT） epoll reactor
+	7：相关linux命令和Makefile
+	8：协程
+	9：ipc， 非阻塞socket
+未有效落实：
+	1：bitmap的实现
+	2：hash的实现
+	3：相关设计模式
+	4：异步http的实现，tcp三次握手，各个状态，拥塞控制，滑动窗口，分包组包（非阻塞socket）
+	5：zeromq
+	6：protobuf，xml
+	7：openssl
+	8：proactor
+	9：项目
+	10：log4cpp
+	11：gdb和valgrind
+	12：百万并发相关因素，源码
+
+
+
+
