@@ -1,0 +1,142 @@
+1：安装libfastcommon
+
+如果要一键式安装，用docker实现。
+2：安装fastdfs
+	拷贝tracker和storage， client的配置文件 
+	配置tracker配置文件==》2个
+		1：本机ip
+		2：日志路径
+	四个storage的配置：
+		1：本机ip
+		2：分别两个是一个组  其中两个改group2
+		3：端口不改
+		4：修改base_path 日志目录
+		5：修改存储路径  store_path0
+		6：配置集群所有的tracker服务器， 这里是两个
+			端口默认 ==》#http 访问文件的端口(默认 8888,看情况修改,和 nginx 中保持一致)
+	client的配置，在storage环境上配置
+		1：修改日志路径
+		2：修改tracker的ip地址==》集群如果多个加多个
+3：启动服务：转到fastdfs目录
+	mkdir -p 创建目录
+		tracker上使用自己的配置文件启动tracker ==》查看日志是否ok
+		storage上使用storage配置文件启动 ===》查看日志是否启动ok
+			在/usr/bin 目录下，分别使用sudo ./fdfs_monitor /etc/fdfs/client.conf 测试
+		在storage上测试上传功能。
+			fdfs_upload_file /etc/fdfs/client.conf  test
+			fdfs_download_file /etc/fdfs/client.conf group.....路径
+			fdfs_delete_file /etc/fdfs/client.conf group.....路径
+			
+			上传后，查看文件所在情况，  同一个group中内容相同？？？
+			tracker是分布式的？   Group是集群形式？  Group内部storage会自动同步
+4：在storage所在环境上安装nginx需要的模块：
+	fastdfs-nginx-module 进入src目录
+	nginx安装路径下，新增该模块 sudo ./configure --add-module=....
+	在makefile中新增fastdfs和fastcommon的头文件依赖
+	重新编译nginx: sudo make   sudo make install
+	
+	把fastdfs-nginx-module mod_fastdfs.conf配置文件拷贝到/etc/fdfs
+	修改日志路径，存储路径，tracker server，group组， url_have_group_name 改为true
+	group_count 改为2，修改对应的group内容
+		==》尽量和storage一致
+	建立软链接
+5：配置group中的nginx
+	配置端口：storage中配置的server端口和这里配置的端口要一样    这里8888
+	配置group： 配置正则表达式 location
+	nginx-worker启动失败，缺少两个文件，拷贝到/etc/dfs/  mime.types(nginx)   http.conf(fastdfs)   
+	启动nginx -c 配置文件
+测试一下：上传一个文件，获取上传路径，然后通过web界面访问 ==》使用对应的storage所在ip
+	出现乱码，nginx没有配置utf-8  ==》配置文件http项中加 charset utf-8
+		===》好像所有的storage都可以访问？
+6：入口nginx的配置：
+	要配置upstream  group1 和group2
+	加两个location ===》配置不同的路径给不同的upstream组
+	
+	如果出现问题，首先查看日志！！！
+	
+老师的虚拟机配置：	
+	30G 256M内存
+	tracker的作用，上传文件时，他知道storage的信息，获取ip和端口，通过client上传
+	tracker可以选择将信息存在group1还是group2
+	
+	访问的时候其实是nginx的反向代理，然后到达目标的文件
+7：产品上云，进行发布
+
+问题：四个storage到底哪个是集群？？   group内部，还是group之间？
+		我的理解是group内部是集群，然后，group1和group2之间不互通
+		
+1：项目需求如何理解？   评估时间等
+2：产品      ==》最初的时候考虑怎么实现？有哪些可用的技术方案？ 
+		mysql   redis  nginx    版本，怎么存等，技术如何选型？==》由开发人员决定而已
+		mysql表怎么建？
+		业务实现需要哪种语言？
+		前期设计时的文档设计，主要的接口要已经确定
+   后端开发有三种设计模式：
+	fastcgi 、    ==>云盘项目选择这个了   nginx---cgi进程---mysql
+	openresty+lua ,    ==》nginx直接访问mysql
+	java/golong/python/node.js ==>gc语言，nginx代理，多个web服务器，mysql集群   多用于电商
+	
+	以上三种方案都可以实现网页，http请求
+		1：业务很多，会选择java等
+		2：openresty 可以用在公司内部，bug管理  ===》并发量不大的
+		3：fastcgi   主要用于获取系统变量的一些场景，比如环境变量，在线编译
+		
+		通讯内部：很多采用cgi
+		
+		qq sng部门，很多用的cgi做的，并发并不是很高~
+			==》c10K的级别。
+		在vip群打开这个链接 https://jq.qq.com/?_wv=1027&k=nwUkryKi
+			会跳转到一个 看到：cgi-bin的
+			http://qm.qq.com/cgi-bin/qm/qr?k=0tggwDdMkY1een6DjLjrGLfulFRNrGEV&authKey=xmTbOCTnVaq1V6QoDh5r1Y1x5%2F90pK5gBAWSnn9CCd81fylTOueCX1YQa73m55rx&noverify=0&group_code=905278386
+		
+		第二种可能要学习lua
+		
+		gc，自带垃圾回收。
+		C++写业务逻辑，是很多字符串处理问题
+3：对于每一个接口的测试，测出服务的性能。
+
+
+	作业：
+		1：从需求理解 接口文档，sql，==》划分接口   理解业务逻辑，
+		2：测试出每一个接口的性能
+			==》站在产品的角度看待自己开发的项目
+			
+			openresty go多种语言实现的业务
+		    ===》使用wrk测试并发量 qps
+			    性能瓶颈， 主要在数据库     如注册，用时间戳测试，发现只有sql语句的差异  业务耗时并不多
+										先插入redis，再插入数据库
+										异步插入，可以提升qps
+						要改成异步，需要消息中间件~
+							mysql可能会挂，redis可能会挂 ==》这是高可用问题
+			先自己思考一下，怎么测，然后讨论
+		3：产品上云，上线。
+			腾讯云等云 直接的mysql+redis版本试试？
+			
+			快速部署：   通过文档？  docker容器/一键式部署 使用docker最好，一键式部署可以思考脚本 
+				==》这里不涉及自动扩容
+				
+			客户端 会不会受到影响 ==》服务器至少两个，服务器异常得考虑
+			自动化监控： zabbix, open-falcon 等
+				通知，收集，重启
+				
+				
+		应该扩展：	除了使用cgi，应该用其他方案试试。
+		
+			
+4：tracker：
+	tracker起到storage存储索引的作用
+		1：取tracker里找有没有对应的位置
+		2：去storage存
+		3：storage存完后告诉tracker
+	nginx是作为storage的代理，达到通过网页访问的效果，storage没有nginx其实也是可以访问的
+	nginx_fastdfs_module 把storage中的资源加http的头，在网页显示
+	
+	两种划分方案：
+		可以布置两个tracker，防止宕机
+		可以在每个组内布置tracker
+	可以看看ngx_http_fastdfs_module模块代码   nginx的handler模块
+	
+	fastdfs无法传文件夹
+	
+	负载均衡是upstream模块
+	nginx_fastdfs_module 是handler模块 ===》没办法做多个storage
