@@ -1,5 +1,9 @@
 哪有什么岁月静好,无非是有人在负重前行;
 延伸:updatedb,  ldconfig,  locate命令的使用. update-alternatives软件版本的切换
+linux ipc相关的代码: https://github.com/clpsz/linux-ipcs
+
+
+基于排序的链表,基于红黑树,基于最小堆,基于事件轮实现的定时器
 
 ubuntu上安装qt,gcc的更新版本,cmake的更新版本
 MRPT, CGAL
@@ -73,6 +77,9 @@ MRPT, CGAL
 		cmake ..
 		make -j4
 		sudo make install 
+	问题:安装不成功===>需要安装一些依赖
+		sudo apt-get install build-essential pkg-config cmake    Libwxgtk3.0-dev libftdi-dev freeglut3-dev    zlib1g-dev libusb-1.0-0-dev libudev-dev libfreenect-dev    libdc1394-22-dev libavformat-dev libswscale-dev    libassimp-dev libjpeg-dev libopencv-dev libgtest-dev    libeigen3-dev libsuitesparse-dev libpcap-dev
+
 	2:CGAL 4.9
 
 
@@ -97,6 +104,36 @@ MRPT, CGAL
 		make
 		make install
 	问题:发现cmake的版本过低...
+
+		sudo apt install libeigen3-dev
+		/usr/include/eigen3
+
+		通过源码的方式安装 TBB 线程构建模块
+		https://github.com/oneapi-src/oneTBB/releases
+
+	 Could NOT find Boost (missing: Boost_INCLUDE_DIR atomic chrono date_time system thread)
+	 首先安装boost库的依赖:
+	 	sudo apt-get install mpi-default-dev　　#安装mpi库  
+		sudo apt-get install libicu-dev　　　　　#支持正则表达式的UNICODE字符集   
+		sudo apt-get install python-dev　　　　　#需要python的话  
+		sudo apt-get install libbz2-dev　　　　　#如果编译出现错误：bzlib.h: No such file or directory
+
+		如果有报错就执行  sudo apt-get update
+
+		去下载boost的源码 https://dl.bintray.com/boostorg/release/1.69.0/source/
+		解压源码进行安装:
+		解压出来以后，进入解压出来的文件夹，执行下面的命令
+		sudo ./bootstrap.sh
+		在执行下面的命令，这样头文件就被默认安装在/usr/local/include头文件下，库文件就被默认安装在/usr/local/lib下
+		sudo ./b2 install
+		编译boost相关代码:
+			g++ -o test test.cc -std=c++11 -I /usr/local/include -L /usr/local/lib -lboost_regex
+		有so找不到的情况下, 在/etc/ld.so.conf中加入xxx.so所在的目录,并执行ldconfig
+		sudo apt-get install libblas-dev
+
+
+		这个命令没有试: sudo apt-get install libboost-all-dev
+		make默认是单核,想要多核   make -j4
 		
 
 排除掉课程培训相关字眼:
