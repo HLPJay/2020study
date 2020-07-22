@@ -1,0 +1,15 @@
+1：mysql慢查询可以确定mysql语句执行超时的语句
+2：mysql数据库的优化：三分靠配置文件，七分靠sql语句
+	：增加内存提高磁盘读写速度，使用多块磁盘，增加缓冲区
+	集群：高可用，主从复制，拆分库，拆分表等
+3：主从同步出现问题，延迟或者宕机： ==》设置全局读锁，跳过一次错误/或者重新同步 
+	如何实现完整备份，定时备份？  mysqldump+脚本
+4：LAMP Linux+Apache + Mysql +Perl/PHP/python
+   redis的备份： 通过快照/主从复制
+	半持久化模式和全持久化模式AOF
+	读写分离：  把select操作在slave上执行==》前提是主从复制
+		==》Amoeba读写分离， Mycat读写分离， 基于程序的读写分离（效率最高 mysql proxy）
+5：使用Zabbix对网站进行监控
+6：nginx采用epoll模型，异步非阻塞～  epoll是linux内核2.6以后出的
+	Apache采用的是select模型
+
