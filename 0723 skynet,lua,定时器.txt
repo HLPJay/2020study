@@ -1,0 +1,90 @@
+skynet初识二
+1：rpc grpc？  如何实现？
+2：actor模型在代码层抽象出一个进程（强隔离，弱统一）环境。也存在问题：
+	启动顺序问题，协议问题，负载均衡，数据同步（最终一致性和强一致性）
+	配置项管理，服务协调管理，命名查找，分布式锁问题
+3：skynet的actor：
+	隔离环境，回调函数，消息队列
+4：消息的生产：
+	actor运行：多个工作线程 轮询全局消息队列，==》有消息的actor消息队列
+		取出actor消息队列，调用actor的回调函数来实现的。
+	工作线程有不同的权重： -1 每次消耗一个消息  0 全部消耗   1消耗一半。。。
+5：actor通信：  ==》
+	异步通知
+	同步调用 ===》主要使用lua的协程实现
+6：使用c语言，为lua实现c的辅助库
+ skynet的核心   是lua/c接口编程==》
+	lua的基础数据类型
+		boolean，
+		number （整数和浮点数）
+		string (std::string)
+		function (回调函数) 
+		userdata， （C中的内存块） lua_newuserdata来生成
+			lua 的gc就可以帮我们回收内存
+			lightuserdata 相当于c的指针
+		thread （lua中的协程， 同步的方式来编码，实现异步调用）
+			master调用send()后 协程将其睡眠，收到响应会唤醒
+		table （lua中唯一的数据结构，  通过元表可以修改table的行为）
+			（__index, __newindex）
+		nil ==>不存在的意思
+	闭包： ==》c和lua的函数在lua都是function
+		1：表现： 函数内部可以访问函数外部的变量，   lua文件是一个匿名函数
+		2：实现： 
+			c函数以及绑定c函数上的upvalues（上值）     ===》找个闭包的实例
+		3：用lua_pushcclosure 创建c闭包   ===》lua中多闭包
+		4：通过lua_upvalueindex 伪索引来获取上值
+	元表：
+		1：只有table和userdata对象（c内存块）有独自的元素，其他类型只有类型元表
+		2：只有table可以在lua中修改设置元表
+		3：userdata只能在c中修改设置元表。  lua中不能修改userdata的元表
+	虚拟栈：
+		1：栈上都是lua类型的值
+		2：lua调用c的函数，都得到一个新的栈，独立于之前的栈
+		3：c调lua，每一个协程都有一个栈，没有显示创建那么就是主协程的一个栈
+	注册表：  _G _evn
+		1：预定义的表   用来保存任何c代码想保存的lua值 ==>想全局保存
+		2：使用LUA_REGISTRYINDEX来索引
+7：测试代码：
+	userdata 存储c的结构体内存 lua_newuserdata来生成，交给lua自动销毁
+	如果c的结构体 包含c分配的内存  —__gc元方法，释放c的内存
+	
+	c语言要包含相关lua的头文件。
+	使用lua调用c函数，先把c编译成动态库.so,就可以直接调用，每次调用都会生成新的虚拟栈
+		LuaL_Reg
+	绑定函数的上值，函数调用一次，+1
+	注册表实现lua调c，，   lua中table从1开始  多个注册表，使用的是同一个注册表
+	
+	redis的跳表，导入到lua中使用  luaopen开头
+8：skynet网络层
+	通过pipe实现不用加锁，通过epoll管理fd==》封装了一个事件，封装可一个socket
+	epoll管理event和socket      socket中有handler有我们的句柄
+		==》sp_add
+	网络消息与actor如何建立联系    ==》sp_wait  event ==>socket ==>找到actor
+	工作线程与网络线程沟通     pipe 
+9：定时器：
+	最小堆实现   boost    asio   go使用四叉树最小堆    ===》适合单线程
+	红黑树  存储，有序  set  map    nginx定时器        ===》 适合单线程
+		1：存储功能openresty    shared_dict
+		2：有序  可以实现定时器     节点 过期时间+callback     
+	时间轮： skynet   linux内核中的定时器
+		可以搞个多个桶子形成的循环队列   ===》链表的结构
+			1：第一个桶子存1s超时的连接
+			2：。。。。。
+			。。。。。。。
+			10.。。。。。10s
+			
+			每次更新往第十个桶插入数据，sleep(1)检测第一个桶，将第一个桶中的超时连接断开，空桶放在队尾
+				==》只需要关注第一个
+				
+					十个桶子中可能有多个超时情况，===》引用计数来解决这个问题 价格变量？
+				超时直接踢掉
+			map或者hash，每次每个都得检测
+			
+			
+		skynet的定时器	
+			handle  actor的地址
+			session  地址
+		struct timer    ==》字节对齐，每10ms遍历一次
+			分层次，最近要发生的==》不同时间加入不同模块
+			加入节点后要调整节点
+			===》游戏技能过期这样实现
