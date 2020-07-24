@@ -79,7 +79,6 @@ int main()
 }
 
 
-
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -101,13 +100,7 @@ private:
 	pthread_t threadId;
 };
 
-
-bool Thread::IsStop()
-{
-	return stopFlag;
-}
-
-class Timer : public thread{
+class Timer : public Thread{
 	typedef void(*Timerfunc)(void* p);
     typedef Timerfunc TimerHandler;
 public:
@@ -128,20 +121,19 @@ private:
 };
 
 
-
-
-#include <mythread.h>
+#include "./mythread.h"
 typedef unsigned long int uint64_t;
 
 Thread::Thread():stopFlag(false), threadId(-1)
 {}
 
 //回调函数,传入自己的指针
-static void ThreadCall(void* p)
+static void* ThreadCall(void* p)
 {
-	Thread * p = (Thread*)p;
+	printf("ThreadCall start\n");
+	Thread * t = (Thread*)p;
 	//开始运行线程
-	p->run();
+	t->run();
 	//运行完销毁线程
 }
 
@@ -152,22 +144,28 @@ Thread::~Thread()
 
 void Thread::Start()
 {
-	int err = pthread_create(&threadId, NULL, (void *)&ThreadCall, (void *)this);
+	printf("Start start\n");
+	int err = pthread_create(&threadId, NULL, ThreadCall, this);
 	if(err != 0)
 	{
-		printf("can not create thread: %s \n", strerror(err));
+		printf("can not create thread \n");
 	}
 }
 
 void Thread::Stop()
 {
 	stopFlag = true; //关闭线程正在运行
-	void *res;
-	int ret = pthread_join(threadId, &res);
-	if (0 != ret)
-        printf("join thread failed\n");
+	//这里不用调用join  不用等线程结束
+	// void *res;
+	// int ret = pthread_join(threadId, &res);
+	// if (0 != ret)
+ //        printf("join thread failed\n");
 }
 
+bool Thread::IsStop()
+{
+	return stopFlag;
+}
 /***************************************************
 
 
@@ -191,12 +189,13 @@ static uint64_t GetCurrentTime()
 
 void Timer::run()
 {
+	printf("run start \n");
 	uint64_t nowTime = GetCurrentTime();
 	uint64_t startTime = nowTime;
 	while(!IsStop())
 	{
 		nowTime = GetCurrentTime();
-		if(nowTime - startTime > m_interval*1000)
+		if(nowTime - startTime >= m_interval*1000)
 		{
 			//执行回调
 			(*m_func)(m_paras);
@@ -204,6 +203,7 @@ void Timer::run()
 
 		sleep(1);
 	}
+	printf("run end \n");
 }
 
 void Timer::registerHandler(TimerHandler handler, void* p)
@@ -223,9 +223,30 @@ void Timer::Stop()
 }
 
 //需要定义回调函数,需要设置超时时间,需要设置回调函数参数
-
+void callback(void * p)
+{
+	int * i = (int *)p;
+	printf("callback %d\n", *i);
+}
 int main()
 {
-	Timer time = new Timer();
-	
+	Timer* time = new Timer();
+	int i = 0;
+
+	time->registerHandler(&callback, (void*)&i); //注册回调
+	time->setInterval(1);   //每隔一秒执行一次
+	time->Start();
+
+	for(; i<10; i++)
+	{
+		sleep(1);
+	}
+	time->Stop();
+
+	if(time != NULL)
+	{
+		delete time;
+		time = NULL;
+	}
+	return 0;
 }
