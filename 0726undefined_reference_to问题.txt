@@ -1,0 +1,24 @@
+腾讯面试：https://www.yuque.com/linuxer/linux_senior/czr88p
+网络编程得练练：https://www.yuque.com/linuxer/linux_senior/wk8w2m
+基础库～网络库：        https://github.com/limingfan2016/game_service_system
+linux多线程服务端编程：  https://github.com/834810071/muduo_study
+
+
+
+有头文件，提供接口，提供回调函数，通过回调函数触发到回调函数体
+
+类似于undefined reference to的问题，要不就是头文件没有加上，要不就是so没有链接对;
+/opt/ros/indigo/lib/librosconsole.so:-1: error: undefined reference to `ros::console::backend::function_notifyLoggerLevelsChanged'
+
+这里报的是librosconsole.so，通过ldd查看该so依赖所需要的so，查看与报错对应相关的关系：
+
+hlp@hlp:/opt/ros/indigo/lib$ ldd librosconsole.so |grep /opt/ros/indigo/lib/
+    librosconsole_log4cxx.so => /opt/ros/indigo/lib/librosconsole_log4cxx.so (0x00007f8e719c0000)
+    librosconsole_backend_interface.so => /opt/ros/indigo/lib/librosconsole_backend_interface.so (0x00007f8e717be000)
+    librostime.so => /opt/ros/indigo/lib/librostime.so (0x00007f8e71180000)
+增加对应的so试试：
+    -lxmlrpcpp -lrosconsole_backend_interface \
+    -lcpp_common -lrosconsole_log4cxx
+
+
+思考：链接的so，应该自己内部链接依赖需要的so，这里可能是我的lib库环境变量目录没有设置导致。
