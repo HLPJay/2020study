@@ -1,3 +1,33 @@
+云盘项目的实现：
+	1：安装fastdfs及测试；
+	2：安装mysql及测试，以及相关密码
+	3：安装redis及测试
+	4：安装nginx及fcgi及测试相关
+	延伸：使用集群的方式对存储进行扩展，协程，集群，epoll，线程池
+使用web的进行测试：
+使用客户端进行测试： 电脑app，Android环境等
+
+进行代码的实现了：
+	
+刷题，掌握一些代码实现；
+
+
+在线的c++ 手册：
+https://zh.cppreference.com/mwiki/index.php?title=Special%3A%E6%90%9C%E7%B4%A2&search=thread
+
+
+
+深入理解nginx：
+	https://github.com/russelltao/geektime-nginx
+	http://tengine.taobao.org/book/
+nginx handler模块以及各个模块的学习
+	https://www.cnblogs.com/wych/p/4094815.html
+	
+	http://redisdoc.com/
+skynet，一个好的网络库（lua与c的交互）：https://github.com/cloudwu/skynet
+
+
+
 定时器的实现：
 	1：二叉树最小堆的实现 ：   经典的是boost中的asio
 		四叉树  golong
