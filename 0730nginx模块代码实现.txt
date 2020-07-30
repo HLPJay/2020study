@@ -1,0 +1,240 @@
+nginx的实现方案： 最好内核数的线程数，异步非阻塞（epoll等）
+nginx中worker_connections 限制进程最大连接数，每个进程内部视同连接池来管理的
+作为反向代理服务器，每个并发建立会占用两个连接===》客户端和后端服务器的连接
+connection ： nginx会控制进程是否加入accept  用accept_mutex  用ngx_accept_disabled控制
+request :http请求  用ngx_http_request_t结构体开封装 ===》采用状态机解析请求行
+	各种阶段堆请求做处理，最后用filter过滤（truncked封装，gzip压缩等）
+	请求头放在一个buffer中   buffer的大小 client_header_buffer_size设置  更大的large_client_header_buffers设置
+		超过会返回 414(请求) 、400（请求头）
+
+	keepalive：一个连接多次请求 
+		==》如访问图片服务器
+	pipe ：一个连接多次请求 
+		流水线工作  客户端第一个请求发完，可以直接发第二个请求
+	lingering_close:延迟关闭。  先关闭写，再关闭读
+		读取剩下客户端发来的数据，有超时
+相关基本的数据结构：
+	
+	
+	
+nginx的源码： 可以参考：https://github.com/chronolaw/annotated_nginx.git
+	红黑树，内存池，线程池，网络io：reactor
+在nginx的基础上，实现一块nginx的模块：
+	1：ngx_start_worker_processes
+	2：nginx中的reactor ngx_epoll_module.c   ?状态机？
+	
+	handler模块？   
+	nginx有哪些模块？  
+		upstream（转发,接收请求的时候就处理，转发时用）
+		handler （请求时拿到处理，直接可以返回处理结果）
+		filter （response结果加处理）
+	
+	
+	nginx需要安装   zlib  openssl  pcre+nginx 
+实现一个handler模块，去理解源码：
+	对一个客户端，网页访问次数进行统计
+	ngx_zvoice_count.c ===>ngx_zvoice_count_module
+	如果不返回结果，也可以用upstream
+		
+		
+参考ngx_http_access_module来实现：
+		
+	ngx_module_t  ngx_http_access_module = {
+		NGX_MODULE_V1,
+		&ngx_http_access_module_ctx,           /* module context */
+		ngx_http_access_commands,              /* module directives */
+		NGX_HTTP_MODULE,                       /* module type */
+		NULL,                                  /* init master */
+		NULL,                                  /* init module */
+		NULL,                                  /* init process */
+		NULL,                                  /* init thread */
+		NULL,                                  /* exit thread */
+		NULL,                                  /* exit process */
+		NULL,                                  /* exit master */
+		NGX_MODULE_V1_PADDING
+	};
+有关代码的实现：
+
+#include <ngx_http.h>
+#include <ngx_config.h>
+#include <>
+
+	
+	//如配置location curl http://127.0.0.1:8080/hlp 时就会触发这里  如何存储多个对应的访问次数
+	//用红黑树来存？    ip类型怎么转为int类型的？四个字节的数  uint
+	//nginx的红黑树写的一般~~~~
+	
+	ngx_rbtree_t ngx_pv_tree ;
+	ngx_rbtree_node_t sentinel ;
+	//html
+	void ngx_encode_http_page(char* html)
+	{
+		sprintf(html, "<h1>0voice<h1>");
+		strcat(html, "<h2>");
+		ngx_rbtree_traversal(&ngx_pv_tree, ngx_pv_tree.root,)
+		strcat(html, "<h2/>");
+	}
+	
+	void ngx_zvoice_count_iterator(ngx_rbtree_node_t *node, char* html)
+	{
+	//把int类型转为ip       0xC0A80032 --》192.168.0.32
+		struct in_addr addr = {0};
+		mymcpy(&addr, &node->key, sizeof(struct in_addr));
+		
+		
+		char buffer[120] = {0};
+		sprintf(buffer,"req from:%s, count: %d <br/>", inet_ntoa(addr), (int)node->data);
+		strcat(html,buffer);
+		
+	}
+	
+	//所有的请求插入到红黑树中   即每个ip的访问次数
+	ngx_int_t ngx_zvoice_count_handler(ngx_http_request_t *r)
+	{
+		//拿到客户端ip地址
+		struct sockaddr_in *client_addr = (struct sockaddr_in*)r->connection->sockaddr;
+		ngx_rbtree_key_t key = (ngx_rbtree_key_t)client_addr->sin_addr.s_addr;
+		ngx_rbtree_node_t *node = NULL;
+		
+		u_char html[1024] = {0}; //组织网页
+		int len =sizeof(html);
+		
+		if(node =ngx_rbtree_search(&ngx_pv_tree, key) == &ngx_pv_tree.sentinel)//nginx的红黑树不带查找功能
+		{
+			node = ngx_pcalloc(r->pool, sizeof(ngx_rbtree_node_t));//内存池里分配的
+			node->key = key;
+			node->data = (u_char)1;// nginx没有做到和业务分离, struct类型的话需要自己加 后面加 void *value
+			ngx_rbtree_insert(&ngx_pv_tree, node);
+		}else{
+			node->data++;
+		}
+		//遍历红黑树显示出来
+		ngx_encode_http_page(html);
+		
+		//http response结果加处理
+		r->headers_out.status = 200;
+		ngx_str_set(r->headers_out.content_type, "text/html");
+		ngx_http_send_header(r);
+		
+		ngx_buf_t *b = ngx_pcalloc(r->poll,sizeof(ngx_buf_t));
+		ngx_chain_t out;
+		out.buf = b;
+		out.next = NULL;
+		
+		b->pos = html;
+		b->last = html+len;
+		b->memory =1;
+		b->last_buf =1;
+		return ngx_http_output_filter(r,&out);
+		
+		
+	}
+	
+//ngx_shm_t  是共享的锁，使用共享内存的方式
+//nginx的红黑树主要为了定时器实现，  自己加的话可以加个# if 标识
+//执行nginx命令时  当配置文件中有count这个命令时，就会触发这里	
+	char* ngx_zvoice_count_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+
+		//初始化红黑树 哨兵节点：共用一个叶子节点
+		ngx_rbtree_init(ngx_pv_tree, &sentinel, NULL); //insert 应该是一个函数
+		ngx_http_core_loc_conf_t *corecf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+		corecf->handler = ngx_zvoice_count_handler;
+	}
+	
+	//NGX_HTTP_LOC_CONF  位置和 NGX_CONF_NOARGS 没有参数
+	//count命令
+	ngx_command_t ngx_zvoice_count_cmd []= {
+		{
+			ngx_string("count"),
+			NGX_HTTP_LOC_CONF| NGX_CONF_NOARGS,
+			ngx_zvoice_count_set,
+			NGX_HTTP_LOC_CONF_OFFSET,
+			0,
+			NULL 
+		},
+		ngx_null_command
+	}
+	
+	ngx_http_module_t ngx_zvoice_count_ctx ={
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		
+		NULL,
+		NULL,
+		NULL,
+		NULL
+	}
+//ngx_http_module_t 这个结构体很重要 ==》是处理配置文件的
+//先执行 create_main_conf create_srv_conf  ... 3 5 7 1 4 6 8 2
+	ngx_module_t  ngx_zvoice_count_module = {
+		NGX_MODULE_V1,
+		&ngx_zvoice_count_ctx,           /* module context */
+		ngx_zvoice_count_cmd,              /* module directives */
+		NGX_HTTP_MODULE,                       /* module type */
+		NULL,                                  /* init master */
+		NULL,                                  /* init module */
+		NULL,                                  /* init process */
+		NULL,                                  /* init thread */
+		NULL,                                  /* exit thread */
+		NULL,                                  /* exit process */
+		NULL,                                  /* exit master */
+		NGX_MODULE_V1_PADDING
+	};
+	
+	
+	
+	
+	
+	nginx的红黑树增加一个查找的功能~  思考：为什么nginx的红黑树不需要查找？
+	
+	#if 1 //update by hlp
+	ngx_rbtree_node_t * 
+	ngx_rbtree_search(ngx_rbtree_t *tree, ngx_rbtree_key_t key)
+	{
+		ngx_rbtree_node_t *node = tree->root;
+		while(node != tree->sentinel)
+		{
+			if(key<node->key)
+			{
+				node = node->left;
+			}else(key >node->key)
+			{
+				node = node->right;
+			}else{
+				return node;
+			}
+		}
+		return tree->sentinel;
+	}
+	
+	void ngx_rbtree_traversal(ngx_rbtree_t *tree, ngx_rbtree_node_t*node, ngx_rbtree_iterator_pt iterator, char* html)
+	{
+		if(node != tree->sentinel)
+		{
+			ngx_rbtree_traversal(tree, node->left,  iterator ,html);
+			printf("打印中间的"); //通过回调函数返回给界面
+			iterator(node, html);
+			ngx_rbtree_traversal(tree, node->right, iterator ,html);
+		}
+	}
+	
+	
+	typedef void (*ngx_rbtree_iterator_pt) (ngx_rbtree_node_t *node, char * html);
+	#endif
+	
+
+	编译的时候要进入要编译的目录，然后要加一个config文件
+	 vim config ==>最好在linux下用vim写
+	 ngx_addon_name = ngx_zvoice_count_module
+	 HTTP_MODULE="$HTTP_MODULES ngx_zvoice_count_module"
+	 NGX_ADDON_SRC = ""
+	 
+	 用./configure  --add0module = 绝对路径来编译  +其他依赖
+	 
+	 ./configure --prefix=/usr/local/nginx --with-http_realip_module --with-http_addition_module --with-http_gzip_static_module --with-http_secure_link_module --with-http_stub_status_module --with-stream --with-pcre=/home/wangbojing/share/nginx/pcre-8.41 --with-zlib=/home/wangbojing/share/nginx/zlib-1.2.11 --with-openssl=/home/wangbojing/share/nginx/openssl-1.1.0g --add-module=/home/wangbojing/share/nginx/ngx_zvoice_count_module
+	 
+	 编译后会自己加到obj下的模块中
+	 
+	 修改配置文件  在location中加命令count 然后测试
