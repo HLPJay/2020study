@@ -7,3 +7,19 @@ C++在线库： http://www.cplusplus.com/
 netmap https://www.aikaiyuan.com/7711.html
 linux多线程服务器 ：https://github.com/834810071/muduo_study
 一些基础库：https://github.com/limingfan2016/game_service_system
+
+
+
+
+1:nic 网络接口层
+2：哈希存储    通过哈希函数生成key，有冲突
+3：线程的栈空间， 进程和线程的区别？
+4：X86-64寄存器和栈帧 ：https://www.cnblogs.com/endv/p/4110798.html
+5：ntyco代码及老师的协程
+6：linux下定时器的实现： https://www.ibm.com/developerworks/cn/linux/l-cn-timers/
+7：多线程私有数据 ：https://www.cnblogs.com/zhangxuan/p/6515264.html
+8：linux下生成core以及core的路径设置： https://www.cnblogs.com/fanblogs/p/12659130.html
+9：Linux虚拟地址空间布局以及进程栈和线程栈总结： https://www.cnblogs.com/dongzhiquan/p/11415722.html
+10：mysql的存储过程 ：https://blog.csdn.net/gaokcl/article/details/83182002
+11： nginx带描述的代码库： https://github.com/chronolaw/annotated_nginx
+12： C++的一些基础点 ：https://github.com/nwpuhq/AwesomeCpp
