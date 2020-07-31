@@ -1,0 +1,9 @@
+libevent https://blog.csdn.net/initphp/article/details/41946061
+nginx的学习： https://blog.csdn.net/yangyin007/article/details/82777086
+ipc通信的五种方式： https://www.cnblogs.com/zgq0/p/8780893.html
+C++在线库： http://www.cplusplus.com/
+%.*s ：https://blog.csdn.net/tonglin12138/article/details/85467289
+关于动态链接库： http://www.360doc.com/content/13/0817/08/7377734_307736719.shtml
+netmap https://www.aikaiyuan.com/7711.html
+linux多线程服务器 ：https://github.com/834810071/muduo_study
+一些基础库：https://github.com/limingfan2016/game_service_system
