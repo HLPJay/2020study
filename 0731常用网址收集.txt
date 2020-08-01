@@ -8,7 +8,9 @@ netmap https://www.aikaiyuan.com/7711.html
 linux多线程服务器 ：https://github.com/834810071/muduo_study
 一些基础库：https://github.com/limingfan2016/game_service_system
 
-
+鹅厂高性能网关设计：https://mp.weixin.qq.com/s?__biz=MzA3ODgyNzcwMw==&mid=202113096&idx=1&sn=7ce616f596c529890dfd475ce8d31858&scene=4##
+fork和vfork的区别：https://blog.csdn.net/gatieme/article/details/51417488
+mmap： https://www.cnblogs.com/huxiao-tee/p/4660352.html
 
 
 1:nic 网络接口层
