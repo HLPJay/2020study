@@ -95,3 +95,68 @@ skynet是一个轻量级的后台服务端框架，设计目标是为了游戏�
 	了解：什么时候唤醒？
 	思考：为什么actor之间发送的消息，不需要唤醒worker线程，条件变量
 		worker取消息，执行消息(actor之间发送消息)  至少有一个worker在执行中
+
+
+
+
+1：skynet 推荐在一个进程中解决所有问题
+	隔离的环境  消息队列  回调函数
+	根据权重取消息
+	如果还有消息，放到全局队列最后 （公平调度）
+		加的自旋锁，不会导致线程切换
+	生产消息：actor发布，定时器（定时任务），socket
+	虚假唤醒
+2：socket线程  ==》消息的生产者
+	1：阻塞io和非阻塞io的区别  阻塞网络线程
+		==》没有数据到达时是否立即返回
+		==》recv和send的时候，立即返回，告诉没有数据
+		==》什么决定了io是否阻塞   fd决定，是否设置了noblock   fnctl
+			recv/send   read/write
+			read和recv的区别？  根据函数原型理解
+	2；redis skynet非阻塞io
+		非阻塞io的实例，返回值等梳理~
+		IO多路复用 poll  epoll select  是阻塞的还是非阻塞的？
+			是阻塞的~ 能够阻塞多个io
+		epoll  红黑树主要存储注册事件 就绪队列 ==》内核中
+			epoll_ctl 注册 删除  更改
+			epoll_wait(...)  内核中有个就绪队列，有个epoll_event数组
+				将就绪队列中的事件拷贝到epoll_event数组中
+	3：C语言服务   结构体内存块 隔离环境 +callback+消息
+	   lua    lua虚拟机
+	 4：config配置文件：
+			cservice   c服务
+			main.lua文件理解
+	5：启动：./skynet/skynet config.test
+	  用客户端连接：  telnet 127.0.0.1   8001
+	  观察服务端信息：客户端发消息
+	  
+	  用lua实现的网络编程
+	  socket_server.c 了解相关定义
+	  配置文件定义了入口函数  如main
+	  try_lock失败 通过管道发送给socket线程 epoll_wait io变为可写将数据发送
+	  
+	  skynet不仅可以作为客户端连接   也可以作为客户端去连接
+	  
+	  网络状态机？
+	  skynet作为客户端 连接redis
+	  
+	  
+	  skynet.fork(function()
+		  local fd = socket.open("127.0.0.1", 6379) ==》要处理连接失败
+		  socket.write(fd, "*1\r\n$4\r\nPing\r\n")
+		  local.data = socket.readline(fd, "\r\n")
+		  printf("recv redis",data)
+	  end)
+	  
+	  
+	  三种绑定的方式：
+		1：注册 listening
+		2:客户端的连接fd
+		3：skynet作为客户端连接其他服务器
+		
+	skynet使用的reactor模型 将连接转为时间处理
+		再转用户处理数据   转actor处理
+		lua 词法分析  用虚拟机执行
+		管道的通信？为什么用管道？ 避免锁
+		
+skynet是服务端的，只能在linux下运行。
