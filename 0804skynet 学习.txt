@@ -160,3 +160,58 @@ skynet是一个轻量级的后台服务端框架，设计目标是为了游戏�
 		管道的通信？为什么用管道？ 避免锁
 		
 skynet是服务端的，只能在linux下运行。
+
+
+多核开发：
+	多进程： 进程间通信（zeromq， RPC） 协调管理进程 （zookpeer）
+	多线程： 1：线程切换
+			 2：选择锁 以及锁的粒度  管道==》单一  一端写一端读
+	CSP go goroutine （协程）+channel在语言层面抽象出线程
+	actor模型：
+		在语言层次抽象出进程  skynet actor 围绕着消息调度
+			网络编程（单线程读，多线程写的方式）
+	状态机实现
+	
+	虚假唤醒==》用while循环来规避
+		条件满足唤醒，可能唤醒多个，用while循环
+
+	skynet哪些地方需要向epoll注册？
+		1：作为客户端连接 connected  如连接redis 接收redis的数据
+		2：三种fd  clientfd 发送消息
+		3：listened    
+		4：管道读端 worker线程管道写数据   
+					socket线程在管道读端读数据
+	  1,2,3需要绑定actor与事件~
+	  redis的epoll   epoll   epoll_event.fd=fd hash结构  fd->conn结构体->client结构体
+	  socket指针第一个地址是actor的地址
+	  
+	  skynet 业务是由lua开发的，与底层沟通的用c，计算密集的也用的c
+	  提升：lua调用c，c调用lua ==》才能看懂skynet代码
+	  目的： openresty（nginx+lua）   filter  handle upstream 配置 luajit接近c的速度
+	  
+	  lua：
+	  1：动态语言==》变量是没有类型 值才有类型  
+	  2：解释型语言 ==》先编译成字节码（操作码） 交给虚拟机处理   lua，python，java  ==》（gc？）
+					==>gc自动释放内存  lua 标记清除
+		==》编译性语言 c/c++ go通过编译器生成当前硬件相匹配的机器代码（汇编代码）
+	  3：lua的类型
+		  nil， boolean， number（整数和浮点数 0 ==0.0）,string（std::string）==>不可变string
+		  fuction（可以绑定上值），
+		  userdata（粘合c/c++语言,十个内存块，）
+			分为完全用户数据（由lua创建内存，由lua gc自动释放内存）
+					轻量用户数据  由c/c++创建的内存   由c/C++自己释放
+		  thread， coroutine
+		  table （唯一的数据结构），数组下标是1开始的 ==》自己把握数组还是hash表
+		  
+		  两个组的项目： 用openresty做个中间件，由openresty转给另一个组（转协议）
+		
+		C调lua   每个协程一个虚拟栈
+		lua调c   每次调用都有一个虚拟栈
+		
+		go语言使csp模型
+		为什么lua不能做csp模型 ==》因为lua，只能一个协程运行，（一个运行，其他挂起）
+		
+		lua中的闭包：
+			表现：函数内部调用函数外部变量。
+			实现：C的函数+上值。
+		元表：只有table和userdata有独自的元表，其他类型只有类型元表
