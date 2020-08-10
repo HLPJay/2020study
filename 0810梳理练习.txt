@@ -18,3 +18,8 @@ PV操作： 实现进程互斥与同步 信号  P是通过 V是释放  S是信�
 	==》示例代码 https://www.cnblogs.com/lihaqwq/p/8645969.html
 Unix域套接字：==》同一个主机上不同进程的通信。 可靠的IPC通信
 	==》示例代码：https://blog.csdn.net/wk_bjut_edu_cn/article/details/81166564
+
+nginx: https://blog.csdn.net/initphp/article/details/53728970
+       https://blog.csdn.net/niitlcj/article/details/9311189
+       https://blog.csdn.net/cywosp/article/details/7044288
+       https://blog.csdn.net/unix21/article/details/12913287
