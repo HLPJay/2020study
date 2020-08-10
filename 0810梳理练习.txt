@@ -1,0 +1,20 @@
+redis 
+
+tcp 
+	主机地址和网络地址
+	tcp的头及拥塞控制 窗口控制
+
+leetcode练习
+
+
+
+进程是资源分配的最小单位，线程是CPU调度的最小单位
+select poll epoll的区别： https://www.cnblogs.com/aspirant/p/9166944.html
+lua的手册：  http://cloudwu.github.io/lua53doc/manual.html#4.5
+MVCC： 并发版本控制
+mysl 脏读，不可重复读，幻读 ==》通过隔离级别来实现（读未提交，读提交，重复读，序列化）
+CPU通过MMU来访问内存 （虚拟地址 ==》物理地址 通过页表） https://blog.csdn.net/jasonchen_gbd/article/details/79461771
+PV操作： 实现进程互斥与同步 信号  P是通过 V是释放  S是信号量 
+	==》示例代码 https://www.cnblogs.com/lihaqwq/p/8645969.html
+Unix域套接字：==》同一个主机上不同进程的通信。 可靠的IPC通信
+	==》示例代码：https://blog.csdn.net/wk_bjut_edu_cn/article/details/81166564
