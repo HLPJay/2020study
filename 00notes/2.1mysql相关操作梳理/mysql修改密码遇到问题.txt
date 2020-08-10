@@ -1,0 +1,52 @@
+方法1： 用SET PASSWORD命令 
+首先登录MySQL。 
+格式：mysql> set password for 用户名@localhost = password(‘新密码'); 
+例子：mysql> set password for root@localhost = password(‘123');
+
+方法2：用mysqladmin 
+格式：mysqladmin -u用户名 -p旧密码 password 新密码 
+例子：mysqladmin -uroot -p123456 password 123
+
+方法3：用UPDATE直接编辑user表 
+首先登录MySQL。 
+mysql> use mysql; 
+mysql> update user set password=password(‘123') where user='root' and host='localhost'; 
+mysql> flush privileges;
+
+1：遇到问题：
+	使用命令修改密码时遇到报错： can't find any matching row in the user table，
+	因为写数据库后没有执行：FLUSH PRIVILEGES;
+
+2：据说新的mysql版本没有password字段，改为authentication_string
+	update mysql.user set authentication_string=password('123456') where user='root';
+	FLUSH PRIVILEGES;
+
+3：依然没生效，用下面的方法：
+	需要理解密码插件：
+	新版本用上面的方法不行，因为，以前MySQL的密码认证插件是“mysql_native_password”，而现在使用的是“caching_sha2_password”：  
+	ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
+
+
+
+4:忘记了以前设置的密码：
+
+sudo vi mysqld.cnf
+设置跳过密码：  增加字段：skip-grant-tables
+
+重置密码：
+mysql> update mysql.user set authentication_string=password('123456') where user='root';
+Query OK, 0 rows affected, 1 warning (0.00 sec)
+Rows matched: 1  Changed: 0  Warnings: 1
+
+Plugin字段标识可以用于验证用户身份的插件，如果字段为空，服务器使用内建授权验证机制验证用户身份。
+mysql> UPDATE user SET plugin="mysql_native_password";
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 4  Changed: 1  Warnings: 0
+刷新
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.00 sec)
+
+去掉skip-grant-tables
+然后重新登录验证：
+sudo /etc/init.d/mysql restart
+mysql -uroot -p123456

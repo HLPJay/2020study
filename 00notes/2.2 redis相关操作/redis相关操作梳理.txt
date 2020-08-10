@@ -1,0 +1,133 @@
+redis学习：
+1：redis的安装：
+	$ wget http://download.redis.io/releases/redis-6.0.5.tar.gz
+	$ tar xzf redis-6.0.5.tar.gz
+	$ cd redis-6.0.5
+	$ make
+2：进行安装 ：  sudo make install    make test 安装前测试
+   查看版本：	redis-server -v
+   redis启动前配置：
+		sudo mkdir /etc/redis
+		sudo cp redis.conf /etc/redis/6379.conf
+		sudo vi /etc/redis/6379.conf
+			daemonize yes ===>修改配置，redis以守护进程的方式启动
+	redis启动：
+		redis-server /etc/redis/6379.conf
+		ps afx|grep redis
+3：设置redis开机自动启动：
+   sudo cp redis_init_script /etc/init.d/redis_6379   //移动配置文件
+   cd /etc/init.d/
+   vi redis_6379 
+   sudo update-rc.d -f redis_6379 defaults   //设置开机启动
+			//sudo update-rc.d -f redis_6379 defaults  移除开机启动
+   sudo sysv-rc-conf --list redis_6379   //查看是否加到开机启动  发现自己云服务器不支持了
+   sudo reboot 
+4：启动客户端及给客户端设置密码：
+		redis-cli -p 127.0.0.1 -p 6379   /redis-cli
+		sudo vi /etc/redis/6379.conf
+		requirepass 123456   //配置密码
+		redis -a 123456
+	通过命令修改，连接redis客户端后：
+		ubuntu@VM-0-10-ubuntu:~$ redis-cli 
+		127.0.0.1:6379> config set requirepass 123456
+		OK
+		127.0.0.1:6379> config get requirepass
+		1) "requirepass"
+		2) "123456"
+		127.0.0.1:6379> exit
+	修改后使用密码登录和非密码登录来验证权限：
+		redis-cli -p 6379 -a 123456
+	
+5：redis开启和设置多线程：
+	# io-threads-do-reads yes
+	# io-threads 4 //小于核数
+6：使用抓包分析命令：  ===》怎么抓redis的包
+	sudo tcpdump -i any dst host 127.0.0.1 and port 6379
+7：练习redis相关操作
+	字符串存储：
+		1：redis存储文章设计；
+		2：redis存储即时通讯的消息id
+		3：限速器 --》比如每秒30个
+			防止用户暴力破解
+		知识点：MSET/MGET, 存储二进制或文本，定制格式达到效果。 ==》可以独立设置超时时间，可以后面增加。
+	hash 散列表： ==》一个key可以对应多个存储
+		1：短网址生成器 ===》连接实际网址并记录点击次数
+		2：hash存储文章设计
+	list列表： ==》可以添加到头或者尾  最多2^32-1
+		1: 先进先出队列
+		2：分页功能，微信朋友圈的分页（数据最好不要修改）。
+	Set集合： String类型的无序集合，不能重复
+		==》通过哈希表实现， 加，删，查 Q(1)    key --value
+		1:实现唯一计数器 ==》浏览量（字符串）和用户数量（set）
+		2：点赞，统计集赞数量
+		3：共同关注，推荐关注，关注取差集
+		4：实现一个微信/微博关注模型
+		5：实现投票，取消投票
+		6：抽奖
+	Sorted set：  有序集合 成员关联double类型的score，根据score排序。 score可以重复，value不允许重复  Q（1）
+		1：排行榜
+		2：时间线
+8：操作命令
+	1：redis HyperLogLog  ==》用来做基数统计的算法 ==》数据量很大时,计算基数的空间固定且很小
+	2: redis的发布订阅：  ==》支持多客户端，下次消息会覆盖
+		subscribe redischat ==>创建订阅
+		publish redischat "my publish test"  ===>发布订阅及内容
+	3：redis事务 ==》一次执行多个命令
+		发送exec前放入队列缓存 
+		收到exec进入执行，任意失败依然执行
+		执行过程，其他客户端提交的请求不会插入到事务中。
+		multi  。。。。。 exec
+			==>独占服务器，影响性能，造成阻塞
+	4:Redis脚本 ==》使用LUA解释器执行
+				==》Eval执行脚本
+	5：Redis安全 
+		给redis设置密码
+			127.0.0.1:6379> config set requirepass 123456
+			OK
+			127.0.0.1:6379> config get requirepass
+			1) "requirepass"
+			2) "123456"
+		登录：1：直接用密码 -a登录
+			  2： AUTH password     AUTH "123456"
+9: 数据备份与恢复：
+	创建备份： SAVE   ==》阻塞执行，通过配置文件查看生成文件目录dump.rdb
+	恢复： 将备份文件拷贝到redis安装目录即可   config get dir查看目录
+	备份： BGSAVE  ==》非阻塞
+	可以通过设置save的设定实现自动备份  save <seconds> <changes>
+		save默认的RDB持久化==》可以在配置文件显示关闭吧？
+	RDB持久化 RDB和AOF
+10：性能测试：
+	redis-benchmark [operation] [operation value] ==>在目录执行，测试请求次数
+		redis-benchmark -h 127.0.0.1 -p 6379 -t set,lpush -n 10000 -q  ==》命令set,lpush测试10000次
+11：redis的客户端连接： ==》TCP端口或者unix socket
+		非阻塞模式，设置TCP_NODELAY属性禁止Nagle算法，监听可读事件
+		在配置文件中可以设置最大连接 maxclients
+			redis-server --maxclients 100000  //启动时设置
+	客户端相关命令：
+		操作相关连接，如查询所有连接，保存当前连接，挂起，关闭客户端等。。。
+12：redis管道技术：
+	redis基于客户端服务端模型请求/响应协议的TCP服务。
+	redis管道实现服务端未响应时，客户端继续发送请求。
+	查看redis管道： ==》通过ping进行查看 ==》一次性提交  一次性读响应
+		(echo -en "PING\r\n SET kingkey redis\r\nGET kingkey\r\nINCR visitor\r\nINCR visitor\r\nINCR visitor\r\n"; sleep 10) | nc localhost 6379
+	遗留：执行测试管道和非管道的差异？
+13：redis的分区  ===》不同区的数据操作问题？  
+		范围分区，哈希分区  ==》涉及运行时增加/删除节点 presharding的技术？
+	
+	
+14：要编写C代码，编译相关需要依赖（源码包中有）：
+	查看路径： /redis-6.0.5/deps/hiredis
+	执行命令： make
+			   sudo make install
+	然后查看对应lib目录，已经有了相关需要依赖的lib：
+		ubuntu@VM-0-10-ubuntu:/usr/local/lib$ ls
+		libhiredis.a  libhiredis.so  libhiredis.so.0.14
+	开始编写代码测试。。。:
+15：使用 sudo sysv-rc-conf 命令可以管理开机自启动的服务器。
+
+遗留问题：
+	1：相关模块的代码练习。
+	2：redis的分区操作引发的问题及处理方案。
+	3：redis管道==》管道是什么，管道的命令逻辑？
+	4：学习sudo sysv-rc-conf命令，设置开机启动服务。
+	

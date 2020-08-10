@@ -1,0 +1,105 @@
+MongoDB学习：
+	1：非关系型数据库 数据库(database), 集合(collection), 文档对象（document）
+	2：/data/db
+	3: mongoDB的安装
+		1：太慢：wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.6.tgz
+		2：在官网或者该目录下载对应的MOngoDB的版本：https://www.mongodb.org/dl/linux
+			tar -zxvf mongodb-linux-x86_64-ubuntu1804-v4.4-latest.tgz
+			mv mongodb-linux-x86_64-ubuntu1804-4.4.0-rc10-23-gc940cf7/ mongodb
+	4：mongodb不需要安装，解压后直接使用
+		启动前需要设置MongoDB的配置文件，这里在MongoDB目录下新建etc目录专门存储：
+		ubuntu@VM-0-10-ubuntu:~/install_code/mongoDB/mongodb/bin$ cat ../etc/mongodb.conf 
+		dbpath=/home/ubuntu/install_code/mongoDB/mongodb/data/db
+		logpath=/home/ubuntu/install_code/mongoDB/mongodb/logs/mongodb.log
+		#以守护进程的方式启动
+		fork=true
+		bind_ip=0.0.0.0
+		
+		==》按照自己的配置文件路径设置MongoDB的数据库保存目录和日志目录
+	5：启动MongoDB的服务器端和客户端
+	在MongoDB的bin目录下：
+		启动服务器：sudo ./mongod --config ../etc/mongodb.conf
+		启动MongoDB的客户端： ./mongo
+			./mongo --help查看参数相关意义
+			
+		--dbpath 		指定数据库的目录
+		--port		指定数据库的端口，默认是27017
+		--bind_ip 		绑定IP
+		--directoryperdb	为每个db创建一个独立子目录
+		--logpath		指定日志存放目录
+		--logappend	指定日志生成方式(追加/覆盖)
+		--pidfilepath	指定进程文件路径,如果不指定,将不产生进程文件
+		--keyFile		集群模式的关键标识
+		--journal		启用日志
+		--nssize		指定.ns文件的大小,单位MB,默认是16M,最大是2GB
+		--maxConns		最大的并发连接数
+		--notablescan	不允许进行表扫描
+		--noprealloc	关闭数据文件的预分配功能
+		--fork		    以后台 Daemon形式运行服务
+	6:	查看进程启动：ps afx|grep mongo
+		不要用kill -9杀进程（会损坏数据库），用kill -2杀进程
+		
+		在Linux中用Kill-2和Kill-9都能够结束进程,他们的区别为:
+		Kill -2:功能类似于Ctrl+C是程序在结束之前,能够保存相关数据,然后再退出。
+		Kill -9:直接强制结束程序。
+		在用nohup挂起程序时,当想要结束这个程序,最好用kill -2。
+	7：_id和ObjectId:
+		文档必须有一个"_id"值，可以任何类型，默认ObjectId类型。===》系统自动会创建
+		ObjectId类型：12byte；
+		0~3： 表示unix时间戳，格林尼治时间UTC时间
+		4~6：机器识别码
+		7-8：机器id组成的pid
+		9-11：随机数
+	8：使用BJSON（二进制存储）组织数据，
+		null,布尔，32整数（js引擎，自动转义64位浮点数），64整数，
+		64位浮点数，字符串(UTF8)，符号（不支持），日期（new Date()）
+		，代码(function()),正则表达式，数组，内嵌文档
+	10：增删改查：
+		
+		高级查询：
+		
+		高级更改：
+		
+	11：索引：
+	唯一索引，稀疏索引（无文档），TTL索引（超时时间），全文本索引（文章中词语次数和位置索引）
+	地理空间索引：2d索引(用于平面地图和时间连续的数据)， 使用GridFS存储文件： 	
+	使用GridFS存储：用来存储大型二进制文件
+		索引操作：
+		
+	12：explain() 查询信息，查询统计等。 ==》索引的优化
+		hint() 强制MongoDB使用指定的索引
+	13：MongoDB的存储引擎：
+			MMAPV1， WiredTiger
+				都采用Btree的方式，每个节点一个page，数据以page为单位按需从磁盘加载写入磁盘。
+				每个page以文件里的textent形式(文件offset+size标识)存储。？？？
+		增加了跳表==》随机数结构，可以进行二分查找的有序链表
+	14：观察data/db数据库了解内容：
+	15：适用场景：
+		持久缓存层，高效实时性，用于对象json的存储，高伸缩性的场景，大尺寸，低价值的数据存储
+		游戏用户信息，物流订单信息，朋友圈，人的位置，智能设备日志，视频直播用户信息
+	····不适合复杂查找（关系数据库）。。。
+	16：开发。 查看各种安装方式：http://mongoc.org/libmongoc/current/installing.html
+		1:安装驱动
+			https://docs.mongodb.com/drivers/c/  ==》查看不同语言的驱动包及安装方式
+		这里使用c的  apt-get install libmongoc-1.0-0
+			其他安装方式可以试试
+		如果找不到头文件或者其他问题，试试更新源   sudo apt-get update和 upgrade	
+		使用github进行安装：
+		    git clone https://github.com/mongodb/mongo-c-driver.git
+		    cd mongo-c-driver/
+		    git checkout 1.16.2
+		    python build/calc_release_version.py > VERSION_CURRENT
+            mkdir cmake-build
+            cd cmake-build
+            cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
+            sudo make install
+        2：引入头文件进行编程：
+        发现默认安装方式，头文件和lib的位置不是默认的，编译方式：
+            gcc http_util.c mongodb.c -o mongodb -L/usr/local/include/libbson-1.0 
+            -L/usr/local/include/libmongoc-1.0 -I/usr/local/include/libbson-1.0 
+            -I/usr/local/include/libmongoc-1.0 -lmongoc-1.0 -lbson-1.0
+		
+		3：实现通过高德地图获得位置信息。
+		
+		
+	4：MongoDB与关系数据库的对比
