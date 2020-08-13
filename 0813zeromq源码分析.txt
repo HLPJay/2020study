@@ -1,0 +1,44 @@
+Zeromq的细节：
+	1：msg  vmsg短消息机制 lmsg长消息机制  零拷贝机制
+	   栈上固定20K  要拷贝的size超过20k，函数退出的时候就会报异常
+	   
+	   加了个中间层，实现转发
+	   
+	2：command_t
+		pub --pipe （存的是队列）  -- sub
+	       --pipe
+		   --pipe
+	深拷贝 ==》需要的内存？
+	零拷贝+引用计数
+		io_thread_t 都有一个mailbox
+		socket_base_t  也有mailbox
+		一开始，连接服务器，plug
+		zmq::object_t::send_plug 加断点查看
+		编译的时候  ./configure --enable-debug
+	3：打断点：
+		1：在函数打断点
+		2：不知道具体调用时积累还是子类函数的时候，应在对应行打断点
+			锁住线程（set scheduler-locking on|off|step）
+	4：重连机制
+		process_plug（）
+		start_connecting()
+		耗时动作放在io线程中
+		
+		1：客户端 每个连接对应一个engine，connect成功的时候创建
+		2：服务端 每个连接对应一个engine，accept成功的时候创建
+		服务器断开，
+		1：连接不成功的时候，加入到超时定时器中  zmq::tcp_connecter_base_t::add_connect_timer
+		2: 还是不成功，重连定时器   zmq::strem_connecter_base_t::add_reconnect_timer
+		
+		为什么bind listen是在主线程
+		
+		b 代码 加断点
+		c执行
+		bt查看调用栈
+		
+		高水位标记  pipe队列容量大小，消息数量的最大值
+		xsend
+		xrecv  req/rep/pub/sub 不通的模型的策略不一样
+		
+		zeromq：  新闻气象发布   一对多  pub/sub 发布订阅模式
+		根据具体的场景来分析
