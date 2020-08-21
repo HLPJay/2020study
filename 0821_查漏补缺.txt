@@ -1,0 +1,17 @@
+1：了解 listen accept： https://blog.csdn.net/tennysonsky/article/details/45621341
+2：学习智能指针 ：      https://www.cnblogs.com/WindSun/p/11444429.html
+						https://blog.csdn.net/zhourong0511/article/details/80315961
+3：tcp头字段：          https://blog.csdn.net/zeqi1991/article/details/81582985
+4：日志记录：           https://www.cnblogs.com/airven/p/4897299.html
+						https://www.cnblogs.com/macrored/p/11458027.html
+						https://www.cnblogs.com/lausaa/p/7594360.html
+5：惊群问题：           https://www.cnblogs.com/Anker/p/7071849.html
+6：jemalloc             https://zhuanlan.zhihu.com/p/48957114
+		malloc    jemalloc   tcmalloc     realloc   free
+		
+	1：日志模块
+	2：单例模块
+	3：工厂模式
+	4：智能指针
+	5：tcp测试  epoll
+	6：惊群 +jemalloc
