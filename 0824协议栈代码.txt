@@ -1,0 +1,155 @@
+
+
+/*************************************************
+封装udp的协议栈：
+	1：定义结构体
+	2：跳过内核协议栈，通过mmap接收数据进行解析测试。
+
+	数据链路层， ip层  网络层(UDP) 应用层(用户数据)
+
+知识点：
+	1：网络字节序  大小端
+	2：poll对应的接口
+	3：netmap开源库对应的接口
+	4：结构体开发时的字节对齐问题
+**************************************************/
+
+#include <stdio.h>
+#include <sys/poll.h>
+#include <net/netmap_usr.h>
+
+#define NETMAP_WITH_LIBS
+#define MAC_LENGTH 6
+
+#pragma pack(1)
+struct ethhdr{
+	unsigned char dest_addr[MAC_LENGTH];
+	unsigned char source_addr[MAC_LENGTH];
+	unsigned char type[2];
+};
+
+struct iphdr{
+	unsigned char version: 4,
+		 		  h_length: 4;
+	unsigned char tos;
+	unsigned char length[2];
+
+	unsigned char id; //包的标识
+	unsigned short flag:3,
+				   offset:13;
+
+	unsigned char ttl;
+	unsigned char proto;
+	unsigned short check;
+	unsigned int source_ip;
+	unsigned int desc_ip;
+};
+
+struct udphdr{
+	unsigned short source_port;
+	unsigned short desc_port;
+	unsigned short udp_length;
+	unsigned short udp_check;
+};
+
+struct udppkg{
+	struct ethhdr eth_header;
+	struct iphdr ip_header;
+	struct udphdr udp_header;
+	unsigned char data[0];
+};
+
+
+struct arphdr{
+	unsigned short hardware_type;   //硬件类型
+	unsigned short proto_type;		//协议类型 ipv4 0800 
+	unsigned char hardware_addr_length;   //硬件地址长度  以太网为6    mac地址的长度
+	unsigned char proto_length;            //协议长度  ==》逻辑地址的长度 ip的长度
+	unsigned short opcode; //操作码  请求和应答
+
+	unsigned char source_mac_addr[6];
+	unsigned int source_ip_addr;
+	unsigned char desc_mac_addr[6];
+	unsigned char desc_ip_addr;
+};
+
+struct arppkg{
+	struct ethhdr eth_header;
+	struct arphdr arp_header;
+	unsigned int check;
+};
+
+
+
+struct icmphdr{
+	unsigned char icmp_type;
+	unsigned char icmp_code;
+	unsigned char icmp_check;
+	unsigned int icmp_info;
+};
+struct icmppkg{
+	struct ethhdr eth_header;
+	struct iphdr ip_header;
+	struct icmphdr icmp_header;
+	unsigned char data[0];
+}
+#pragma pack()
+/*****************************************
+//netmap  dpdk 
+这里使用开源库netmap编译，来接管网卡的数据，对网卡的数据进行解析
+
+这里接管网卡数据，网卡的其他功能不可用。
+
+	1：通过netmap接管网卡的数据
+	2：通过poll来接收远端的数据
+******************************************/
+int main()
+{
+	struct nm_desc *nmr = nm_open("netmap:eth0", NULL, 0, NULL);
+	if(nmr == nullptr)
+	{
+		return -1;
+	}
+
+	//poll
+	struct　pollfd pfd = {0};
+	pfd.fd = nmr->fd;
+	pfd.events = POLLIN;
+
+	//定义poll的事件，然后进行获取数据
+	while(1)
+	{
+		int ret = poll(&pfd, 1, -1);
+		if(ret<0) continue;
+		//如果接收到数据，首先获取数据
+		if(pfd.events & POLLIN)
+		{
+			struct nm_pkthdr h;
+			unsigned char * stream = nm_nextpkt(nmr, &h);
+			//对获取到的数据进行解析，我们这里解析udp报文头的相关报文
+			//1：获取以太网的头，判断报文类型,大于两字节要转字节序
+			struct ethhdr * eth = (struct ethhdr *)stream;
+			if(ntohs(eth->type) != 0x0800)
+			{
+				continue;
+			}
+			//否则的话，就是ip报文对应的一些类型
+			struct udppkg *pkg = (struct udppkg *) stream;
+			//判断ip中对应的类型是 17 udp
+			if(pkg->ip_header.proto == 17) //一个字节，网络序和字节序没关系
+			{
+				int udp_all_length =ntohs(pkg->udp_header.udp_length);
+				udp->data [udp_all_length - 8] = '\0';
+				printf("udp body is : %s \n",udp->data );
+			}
+
+		}
+	}
+
+}
+
+/******************************************************
+在运行的过程中，ping命令会出问题：
+	思考，ping命令对应的icmp协议，以及arp协议
+
+******************************************************/
