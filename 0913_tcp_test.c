@@ -1,3 +1,11 @@
+void my_error(const char* err_string, int line)
+{
+	std::cout<<"line:"<<line<<std::endl;
+	perror(err_string);
+	exit(1);
+}
+
+
 /************************
 实现tcpsocket的封装：
 思考：
